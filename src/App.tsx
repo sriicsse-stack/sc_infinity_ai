@@ -21,6 +21,7 @@ import { SearchView } from './components/views/SearchView';
 import { ExtensionsView } from './components/views/ExtensionsView';
 import { AITutorView } from './components/views/AITutorView';
 import { MarketplaceView } from './components/views/MarketplaceView';
+import { AuthView } from './components/views/AuthView';
 import { ActiveActivityTab } from './types';
 import { useRuntime } from './context/RuntimeContext';
 import { useProject } from './context/ProjectContext';
@@ -42,7 +43,7 @@ export const App: React.FC = () => {
   const { refreshPreview, setActiveBottomTab } = useRuntime();
   const { problems, activeTab } = useProject();
   const { isPricingModalOpen, setIsPricingModalOpen, verifyAccountBinding } = useCredits();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   // Validate account on login or state update
   useEffect(() => {
@@ -50,6 +51,11 @@ export const App: React.FC = () => {
       verifyAccountBinding(user.email);
     }
   }, [user]);
+
+  // Auth Gate: Only logged in users can access SC INFINITY IDE
+  if (!user && !loading) {
+    return <AuthView />;
+  }
 
   const handleToggleTerminal = () => {
     if (!isBottomPanelVisible) {

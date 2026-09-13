@@ -33,6 +33,73 @@ export class AIGenerator {
     localStorage.setItem('infinity_gemini_api_key', key);
   }
 
+  /**
+   * Real Gemini conversational chat for general questions, debugging, code analysis & Tamil assistance
+   */
+  public static async callGeminiChat(
+    userMessage: string,
+    preferredModel: string = 'gemini-1.5-pro'
+  ): Promise<string> {
+    const apiKey = this.getApiKey();
+    if (!apiKey) {
+      return "I'm ready. Describe any web app, game, or component you want to build, or say **\"Push to GitHub\"** / **\"Deploy Website\"**!";
+    }
+
+    const systemInstruction = `You are Infinity AI (powered by Google DeepMind / Antigravity), the autonomous AI software engineer and expert pairing assistant in SC INFINITY IDE.
+You have comprehensive knowledge of programming languages (JavaScript, TypeScript, Python, Java, C/C++, HTML/CSS, React, Tailwind, SQL, Firebase), computer science, and real-world software engineering.
+You communicate fluently and naturally in English, Tamil (தமிழ்), or Tanglish matching the user's language.
+When answering questions:
+- Provide clear, accurate, friendly, and practical answers.
+- Use markdown formatting with bolding, bullet points, and syntax-highlighted code snippets where appropriate.
+- Keep answers concise and direct.`;
+
+    const modelsToTry = [
+      preferredModel,
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro'
+    ].filter((v, i, a) => a.indexOf(v) === i);
+
+    for (const modelName of modelsToTry) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                {
+                  role: 'user',
+                  parts: [
+                    { text: `${systemInstruction}\n\nUser: ${userMessage}` }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 2048
+              }
+            })
+          }
+        );
+
+        if (!response.ok) {
+          const errData = await response.text();
+          throw new Error(`Gemini API [${modelName}] failed (${response.status}): ${errData}`);
+        }
+
+        const data = await response.json();
+        const replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (replyText) return replyText;
+      } catch (err) {
+        console.warn(`Gemini chat with ${modelName} failed:`, err);
+      }
+    }
+
+    return `I analyzed your query: **"${userMessage}"**.\n\nPlease check your internet connection or verify your Gemini API key in settings.`;
+  }
+
   public static async generateProjectFromPrompt(
     prompt: string,
     preferredModel: string = 'gemini-2.0-flash',

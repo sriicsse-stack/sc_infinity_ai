@@ -50,12 +50,13 @@ export const AIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [isAgentModalOpen, setIsAgentModalOpen] = useState<boolean>(false);
 
   const [geminiApiKey, setGeminiApiKeyState] = useState<string>(() => {
-    return localStorage.getItem('infinity_gemini_api_key') || (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+    return localStorage.getItem('infinity_gemini_api_key') || (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY || '';
   });
 
   const setGeminiApiKey = (key: string) => {
     setGeminiApiKeyState(key);
     localStorage.setItem('infinity_gemini_api_key', key);
+    AIGenerator.setApiKey(key);
   };
 
   const { generateProjectWithAI, fileTree, currentProject } = useProject();
@@ -353,46 +354,46 @@ What would you like to build today?`,
       return;
     }
 
-    // Handle App Build
-    if (isAppBuild) {
-      await startAgentRun(text);
-      setIsThinking(false);
-      return;
-    }
-
-    setTimeout(() => {
-      let assistantMsg: AIMessage;
-
-      if (lower.includes('error') || lower.includes('fix')) {
-        assistantMsg = {
-          id: `msg_asst_${Date.now()}`,
-          sender: 'assistant',
-          content: `I analyzed your project context and diagnostics. Everything in the active files is verified and syntax-checked. If you have specific code you'd like me to optimize or debug, paste it here or select it in the editor!`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          type: 'text'
-        };
-      } else if (lower.includes('explain')) {
-        assistantMsg = {
-          id: `msg_asst_${Date.now()}`,
-          sender: 'assistant',
-          content: `### Architecture Analysis\nThe current workspace utilizes modular Web Standards with reactive event listeners and clean styling. Code execution runs isolated inside the sandbox runner with real-time console streaming.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          type: 'text'
-        };
-      } else {
-        assistantMsg = {
-          id: `msg_asst_${Date.now()}`,
-          sender: 'assistant',
-          content: `I'm ready. Describe any web app, game, or component you want to build, or say **"Push to GitHub"** / **"Deploy Website"** and I will handle it autonomously!`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          type: 'text'
-        };
-      }
-
+    // 4. Handle Preview query
+    if (lower.includes('preview') || lower.includes('பிரிவியூ') || lower.includes('live view') || lower.includes('open preview')) {
+      const assistantMsg: AIMessage = {
+        id: `msg_asst_${Date.now()}`,
+        sender: 'assistant',
+        content: `🌐 **Live Web Preview Active**\n\nYour application is running on **\`http://localhost:5173\`**. You can interact with it live in the **Preview Panel** on the right!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'text'
+      };
       setMessages(prev => [...prev, assistantMsg]);
       setIsThinking(false);
       setInfinityState('idle');
-    }, 600);
+      return;
+    }
+
+    // 5. Call Real Gemini API for all user questions, explanations, coding pairing
+    try {
+      const reply = await AIGenerator.callGeminiChat(text, model);
+      const assistantMsg: AIMessage = {
+        id: `msg_asst_${Date.now()}`,
+        sender: 'assistant',
+        content: reply,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'text'
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+    } catch (err: any) {
+      console.warn('Gemini chat error:', err);
+      const fallbackMsg: AIMessage = {
+        id: `msg_asst_${Date.now()}`,
+        sender: 'assistant',
+        content: `I'm ready. Describe any web app, game, or component you want to build, or say **"Push to GitHub"** / **"Deploy Website"** and I will handle it autonomously!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'text'
+      };
+      setMessages(prev => [...prev, fallbackMsg]);
+    } finally {
+      setIsThinking(false);
+      setInfinityState('idle');
+    }
   };
 
   const startAgentRun = async (prompt: string) => {
