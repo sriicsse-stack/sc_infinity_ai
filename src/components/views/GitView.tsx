@@ -40,7 +40,7 @@ export const GitView: React.FC = () => {
   const [showConfig, setShowConfig] = useState(false);
 
   const [repoName, setRepoName] = useState<string>(() => {
-    return localStorage.getItem('infinity_git_repo') || 'sc_infinity';
+    return localStorage.getItem('infinity_git_repo') || 'sc_infinity_ai';
   });
 
   const [githubToken, setGithubToken] = useState<string>(() => {
