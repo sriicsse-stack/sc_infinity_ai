@@ -2,6 +2,17 @@ import { FileNode } from '../types';
 
 export class PreviewBundler {
   /**
+   * Safe UTF-8 Base64 Encoder (prevents `<script>` injection and quotes escaping bugs)
+   */
+  private static toBase64Utf8(str: string): string {
+    try {
+      return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))));
+    } catch {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+  }
+
+  /**
    * Universal In-Browser Virtual Module Bundler & Sandbox Compiler
    * Fully compiles React (TSX/JSX), Vue, Vanilla JS, HTML5, CSS/Tailwind, and multi-file projects in real-time.
    */
@@ -59,9 +70,8 @@ export class PreviewBundler {
       }
     }
 
-    // Check project type
+    // Detect project type
     const htmlFile = allFiles.find(f => f.name.endsWith('.html'));
-    const hasReactOrTSX = allFiles.some(f => f.ext === 'tsx' || f.ext === 'jsx' || f.name === 'App.tsx' || f.name === 'main.tsx' || f.name === 'index.tsx');
     const cssFiles = allFiles.filter(f => f.ext === 'css');
 
     // Find main entry point file
@@ -70,7 +80,7 @@ export class PreviewBundler {
       // Look for <script type="module" src="/src/main.tsx"></script> inside index.html
       const srcMatch = htmlFile.content.match(/<script[^>]*src=["']([^"']+)["'][^>]*>/i);
       if (srcMatch && srcMatch[1]) {
-        let srcPath = srcMatch[1].replace(/^\/+/, '');
+        const srcPath = srcMatch[1].replace(/^\/+/, '');
         if (fileMap[srcPath]) {
           entryPointRelPath = srcPath;
         }
@@ -105,14 +115,13 @@ export class PreviewBundler {
       }
     }
 
-    // Collect all CSS contents
+    // Collect all CSS contents safely
     const combinedCss = cssFiles.map(c => `/* ${c.name} */\n${c.content}`).join('\n');
 
-    // Serialize all files into virtual files object for the sandbox
-    const serializedFiles = JSON.stringify(fileMap);
-    const serializedEnv = JSON.stringify(envVars);
+    // Encode virtual files and env to safe Base64
+    const encodedFiles = this.toBase64Utf8(JSON.stringify(fileMap));
+    const encodedEnv = this.toBase64Utf8(JSON.stringify(envVars));
 
-    // Build the complete production sandbox container
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -120,7 +129,7 @@ export class PreviewBundler {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${fileTree.name || 'SC INFINITY Live Sandbox'}</title>
 
-  <!-- Tailwind CSS CDN Engine -->
+  <!-- Tailwind CSS JIT Engine -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -132,7 +141,7 @@ export class PreviewBundler {
           }
         }
       }
-    }
+    };
   </script>
 
   <!-- Babel Standalone for real-time TSX/JSX compilation -->
@@ -144,6 +153,9 @@ export class PreviewBundler {
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
   <style>
+    *, ::before, ::after {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
       padding: 0;
@@ -171,7 +183,8 @@ export class PreviewBundler {
       "tailwind-merge": "https://esm.sh/tailwind-merge@2.2.1",
       "framer-motion": "https://esm.sh/framer-motion@11.0.8?dev",
       "canvas-confetti": "https://esm.sh/canvas-confetti@1.9.2",
-      "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?dev"
+      "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?dev",
+      "axios": "https://esm.sh/axios@1.6.8"
     }
   }
   </script>
@@ -179,16 +192,16 @@ export class PreviewBundler {
 <body>
   <!-- Standard Root Mount Point -->
   <div id="root">
-    <div id="__sc_loader__" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; font-family: system-ui; text-align: center; color: #94a3b8; gap: 12px;">
-      <div style="width: 36px; height: 36px; border: 3px solid #3b82f6; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-      <div style="font-weight: 600; font-size: 14px; color: #f1f5f9;">Starting SC INFINITY Live Runtime...</div>
-      <div style="font-size: 11px; opacity: 0.8;">Compiling React TypeScript modules & assets</div>
-      <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+    <div id="__sc_loader__" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; font-family: system-ui; text-align: center; color: #94a3b8; gap: 14px;">
+      <div style="width: 40px; height: 40px; border: 3px solid #6366f1; border-top-color: transparent; border-radius: 50%; animation: sc_spin 0.8s linear infinite;"></div>
+      <div style="font-weight: 700; font-size: 15px; color: #f1f5f9; letter-spacing: -0.01em;">Starting SC INFINITY Live Runtime...</div>
+      <div style="font-size: 11px; opacity: 0.8; font-family: 'JetBrains Mono', monospace;">Compiling React TypeScript modules & assets</div>
+      <style>@keyframes sc_spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
     </div>
   </div>
 
   <!-- Runtime Error & Diagnostic Display -->
-  <div id="__sc_error_overlay__" style="display: none; position: fixed; inset: 16px; background: rgba(15, 23, 42, 0.96); border: 2px solid #ef4444; border-radius: 16px; padding: 20px; color: #fca5a5; font-family: 'JetBrains Mono', monospace; font-size: 12px; z-index: 999999; overflow: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+  <div id="__sc_error_overlay__" style="display: none; position: fixed; inset: 16px; background: rgba(15, 23, 42, 0.98); border: 2px solid #ef4444; border-radius: 16px; padding: 20px; color: #fca5a5; font-family: 'JetBrains Mono', monospace; font-size: 12px; z-index: 999999; overflow: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #7f1d1d; padding-bottom: 8px;">
       <div style="font-weight: bold; font-size: 14px; color: #fee2e2; display: flex; align-items: center; gap: 8px;">
         <span>⚠️ SC INFINITY Runtime Diagnostic</span>
@@ -199,15 +212,30 @@ export class PreviewBundler {
   </div>
 
   <script>
-    // 1. Configure Environment Variables
-    window.process = { env: ${serializedEnv} };
-    window.importMetaEnv = ${serializedEnv};
+    function fromBase64Utf8(str) {
+      try {
+        return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+      } catch (e) {
+        return decodeURIComponent(escape(atob(str)));
+      }
+    }
+
+    // 1. Safely Decode Environment Variables & Virtual Files
+    try {
+      window.process = { env: JSON.parse(fromBase64Utf8("${encodedEnv}")) };
+      window.importMetaEnv = window.process.env;
+      window.__virtual_files__ = JSON.parse(fromBase64Utf8("${encodedFiles}"));
+    } catch(e) {
+      console.error('Failed to parse virtual files:', e);
+      window.__virtual_files__ = {};
+      window.process = { env: {} };
+    }
     
-    // 2. Load Virtual Files Registry
-    window.__virtual_files__ = ${serializedFiles};
     window.__module_cache__ = {};
 
-    function showRuntimeError(err, context = '') {
+    function showRuntimeError(err, context) {
       console.error('[SC INFINITY Sandbox Error]:', err);
       const loader = document.getElementById('__sc_loader__');
       if (loader) loader.style.display = 'none';
@@ -216,7 +244,7 @@ export class PreviewBundler {
       const msgElem = document.getElementById('__sc_error_msg__');
       if (overlay && msgElem) {
         overlay.style.display = 'block';
-        msgElem.textContent = (context ? 'Context: ' + context + '\\n\\n' : '') + (err.stack || err.message || String(err));
+        msgElem.textContent = (context ? 'Context: ' + context + '\\n\\n' : '') + (err && err.stack ? err.stack : (err && err.message ? err.message : String(err)));
       }
     }
 
@@ -228,9 +256,17 @@ export class PreviewBundler {
       showRuntimeError(e.reason);
     });
 
-    // 3. Virtual Module Resolver & Path Normalizer
+    // 2. Virtual Module Resolver & Path Normalizer
     function resolveVirtualFilePath(specifier, currentFilePath) {
       if (!specifier.startsWith('.')) {
+        if (specifier.startsWith('@/')) {
+          const trimmed = specifier.substring(2);
+          const candidates = ['src/' + trimmed, trimmed];
+          for (const cand of candidates) {
+            const extCand = resolveExtension(cand);
+            if (extCand) return extCand;
+          }
+        }
         return null; // External npm package
       }
 
@@ -248,25 +284,21 @@ export class PreviewBundler {
       }
 
       const basePath = resolvedParts.join('/');
-      const extensions = ['', '.tsx', '.ts', '.jsx', '.js', '.json', '.css', '/index.tsx', '/index.ts', '/index.jsx', '/index.js'];
-
-      for (const ext of extensions) {
-        const fullCandidate = basePath + ext;
-        if (window.__virtual_files__[fullCandidate] !== undefined) {
-          return fullCandidate;
-        }
-        if (window.__virtual_files__['/' + fullCandidate] !== undefined) {
-          return '/' + fullCandidate;
-        }
-        if (window.__virtual_files__['src/' + fullCandidate] !== undefined) {
-          return 'src/' + fullCandidate;
-        }
-      }
-
-      return basePath;
+      return resolveExtension(basePath) || basePath;
     }
 
-    // 4. In-Browser Dynamic Module Transpiler & Loader
+    function resolveExtension(basePath) {
+      const extensions = ['', '.tsx', '.ts', '.jsx', '.js', '.json', '.css', '/index.tsx', '/index.ts', '/index.jsx', '/index.js'];
+      for (const ext of extensions) {
+        const full = basePath + ext;
+        if (window.__virtual_files__[full] !== undefined) return full;
+        if (window.__virtual_files__['/' + full] !== undefined) return '/' + full;
+        if (window.__virtual_files__['src/' + full] !== undefined) return 'src/' + full;
+      }
+      return null;
+    }
+
+    // 3. Dynamic Module Transpiler & Virtual Require Loader
     async function loadVirtualModule(filePath) {
       if (window.__module_cache__[filePath]) {
         return window.__module_cache__[filePath];
@@ -314,12 +346,11 @@ export class PreviewBundler {
         throw new Error('Transpilation error in ' + filePath + ': ' + transpileErr.message);
       }
 
-      // Transform static ES imports/exports into virtual module execution
       const exports = {};
       const module = { exports };
       window.__module_cache__[filePath] = exports;
 
-      // Extract all imports from the code
+      // Extract imports
       const importRegex = /import\\s+(?:(?:([\\w\\d_$]+)(?:\\s*,\\s*\\{([^}]+)\\})?|\\{([^}]+)\\}|\\*\\s+as\\s+([\\w\\d_$]+))\\s+from\\s+)?['"]([^'"]+)['"];?/g;
       
       let match;
@@ -334,10 +365,7 @@ export class PreviewBundler {
         });
       }
 
-      // Replace imports with dynamic loader calls
-      let runnableCode = transformedCode;
-
-      // Load all dependencies first
+      // Load all dependencies
       const depModules = {};
       for (const dep of dependencies) {
         const resolvedLocal = resolveVirtualFilePath(dep.specifier, filePath);
@@ -346,7 +374,7 @@ export class PreviewBundler {
         if (resolvedLocal) {
           depExports = await loadVirtualModule(resolvedLocal);
         } else {
-          // External npm package from esm.sh
+          // External package from esm.sh
           try {
             let pkgUrl = dep.specifier;
             if (!pkgUrl.startsWith('http') && !pkgUrl.startsWith('/')) {
@@ -363,7 +391,7 @@ export class PreviewBundler {
       }
 
       // Convert exports into module assignments
-      runnableCode = runnableCode
+      let runnableCode = transformedCode
         .replace(/export\\s+default\\s+/g, 'module.exports.default = ')
         .replace(/export\\s+const\\s+([\\w\\d_$]+)\\s*=/g, 'const $1 = module.exports.$1 =')
         .replace(/export\\s+let\\s+([\\w\\d_$]+)\\s*=/g, 'let $1 = module.exports.$1 =')
@@ -371,7 +399,7 @@ export class PreviewBundler {
         .replace(/export\\s+function\\s+([\\w\\d_$]+)/g, 'module.exports.$1 = function $1')
         .replace(/export\\s+class\\s+([\\w\\d_$]+)/g, 'module.exports.$1 = class $1')
         .replace(/export\\s+\\{([^}]+)\\};?/g, function(m, inner) {
-          return inner.split(',').map(pair => {
+          return inner.split(',').map(function(pair) {
             const parts = pair.trim().split(/\\s+as\\s+/);
             const localName = parts[0].trim();
             const exportName = (parts[1] || parts[0]).trim();
@@ -380,8 +408,8 @@ export class PreviewBundler {
           }).join('\\n');
         });
 
-      // Inject custom require for local & external modules
-      const customRequire = (specifier) => {
+      // Custom require
+      const customRequire = function(specifier) {
         const resolvedLocal = resolveVirtualFilePath(specifier, filePath);
         if (resolvedLocal && window.__module_cache__[resolvedLocal]) {
           return window.__module_cache__[resolvedLocal];
@@ -392,12 +420,9 @@ export class PreviewBundler {
         return {};
       };
 
-      // Strip original import statements
       runnableCode = runnableCode.replace(/import\\s+[^;]+;/g, '');
 
-      // Execute in isolated function context
       try {
-        // Build scope for dependencies
         let headerScope = 'const import_meta = { env: window.importMetaEnv || {} };\\n';
         for (const dep of dependencies) {
           const mod = depModules[dep.specifier] || {};
@@ -411,7 +436,7 @@ export class PreviewBundler {
             headerScope += 'const ' + dep.namespaceImport + ' = ' + varName + ';\\n';
           }
           if (dep.namedImports) {
-            dep.namedImports.split(',').forEach(item => {
+            dep.namedImports.split(',').forEach(function(item) {
               const parts = item.trim().split(/\\s+as\\s+/);
               const srcName = parts[0].trim();
               const destName = (parts[1] || parts[0]).trim();
@@ -432,7 +457,6 @@ export class PreviewBundler {
 
         runner(module, exports, customRequire, depModules);
 
-        // Standardize default export
         if (module.exports.default !== undefined) {
           exports.default = module.exports.default;
         }
@@ -443,13 +467,12 @@ export class PreviewBundler {
       }
     }
 
-    // 5. Bootstrap Project Entry Point
+    // 4. Bootstrap Project Entry Point
     async function bootstrap() {
       try {
         const entryFile = ${JSON.stringify(entryPointRelPath)};
 
         if (!entryFile) {
-          // No JS/TSX entry point found - check if index.html has static markup
           const loader = document.getElementById('__sc_loader__');
           if (loader) loader.style.display = 'none';
           return;
@@ -458,7 +481,6 @@ export class PreviewBundler {
         console.log('[SC INFINITY Sandbox] Bootstrapping entry:', entryFile);
         const entryModule = await loadVirtualModule(entryFile);
 
-        // If the entry module exports a React Component and didn't auto-mount
         const rootElem = document.getElementById('root');
         const loader = document.getElementById('__sc_loader__');
         if (loader) loader.remove();
@@ -478,7 +500,6 @@ export class PreviewBundler {
       }
     }
 
-    // Start Sandbox
     window.addEventListener('DOMContentLoaded', bootstrap);
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       setTimeout(bootstrap, 50);
