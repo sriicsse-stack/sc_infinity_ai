@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { FileNode, EditorTab, ProblemItem, ProjectMeta } from '../types';
 import { ProjectImporter } from '../services/projectImporter';
-import { AIGenerator } from '../services/aiGenerator';
+import { AIGenerator, GeneratedProjectResult } from '../services/aiGenerator';
 
 const defaultStarterFiles: FileNode = {
   id: 'root',
@@ -253,7 +253,7 @@ interface ProjectContextType {
   importProjectFromDirectory: (files: FileList) => Promise<void>;
   importProjectFromZipFile: (file: File) => Promise<void>;
   exportCurrentProjectZip: () => Promise<void>;
-  generateProjectWithAI: (prompt: string) => Promise<void>;
+  generateProjectWithAI: (prompt: string, preferredModel?: string, onProgress?: (stage: string) => void) => Promise<GeneratedProjectResult>;
   fixProblemWithAI: (problemId: string) => void;
   setProblems: React.Dispatch<React.SetStateAction<ProblemItem[]>>;
   isGeneratingProject: boolean;
@@ -577,10 +577,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     URL.revokeObjectURL(url);
   };
 
-  const generateProjectWithAI = async (prompt: string) => {
+  const generateProjectWithAI = async (
+    prompt: string,
+    preferredModel: string = 'gemini-2.0-flash',
+    onProgress?: (stage: string) => void
+  ): Promise<GeneratedProjectResult> => {
     setIsGeneratingProject(true);
     try {
-      const generated = await AIGenerator.generateProjectFromPrompt(prompt);
+      const generated = await AIGenerator.generateProjectFromPrompt(prompt, preferredModel, onProgress);
       setProjects(prev => [generated.projectMeta, ...prev]);
       setCurrentProject(generated.projectMeta);
       setFileTree(generated.fileTree);
@@ -606,6 +610,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } else if (newTabs.length > 0) {
         setActiveTabId(newTabs[0].id);
       }
+      return generated;
     } finally {
       setIsGeneratingProject(false);
     }
