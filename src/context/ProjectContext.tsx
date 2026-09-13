@@ -262,37 +262,143 @@ interface ProjectContextType {
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [projects, setProjects] = useState<ProjectMeta[]>([initialDefaultProjectMeta]);
-  const [currentProject, setCurrentProject] = useState<ProjectMeta>(initialDefaultProjectMeta);
-  const [fileTree, setFileTree] = useState<FileNode>(defaultStarterFiles);
+  const [projects, setProjects] = useState<ProjectMeta[]>(() => {
+    try {
+      const saved = localStorage.getItem('infinity_saved_projects');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [initialDefaultProjectMeta];
+  });
+
+  const [currentProject, setCurrentProjectState] = useState<ProjectMeta>(() => {
+    try {
+      const savedId = localStorage.getItem('infinity_active_project_id');
+      const savedList = localStorage.getItem('infinity_saved_projects');
+      if (savedList && savedId) {
+        const parsed = JSON.parse(savedList);
+        const found = parsed.find((p: ProjectMeta) => p.id === savedId);
+        if (found) return found;
+      }
+    } catch {}
+    return initialDefaultProjectMeta;
+  });
+
+  const [fileTree, setFileTree] = useState<FileNode>(() => {
+    try {
+      const activeId = localStorage.getItem('infinity_active_project_id') || initialDefaultProjectMeta.id;
+      const savedTree = localStorage.getItem(`infinity_tree_${activeId}`);
+      if (savedTree) {
+        const parsed = JSON.parse(savedTree);
+        if (parsed && parsed.name) return parsed;
+      }
+    } catch {}
+    return defaultStarterFiles;
+  });
+
   const [isGeneratingProject, setIsGeneratingProject] = useState<boolean>(false);
 
-  // Initial active tabs starting with index.html, styles.css, app.js
-  const [openTabs, setOpenTabs] = useState<EditorTab[]>([
-    {
-      id: 'index-html',
-      name: 'index.html',
-      path: 'my-project/index.html',
-      language: 'html',
-      content: defaultStarterFiles.children![0].content
-    },
-    {
-      id: 'styles-css',
-      name: 'styles.css',
-      path: 'my-project/styles.css',
-      language: 'css',
-      content: defaultStarterFiles.children![1].content
-    },
-    {
-      id: 'app-js',
-      name: 'app.js',
-      path: 'my-project/app.js',
-      language: 'javascript',
-      content: defaultStarterFiles.children![2].content
-    }
-  ]);
+  // Initial active tabs
+  const [openTabs, setOpenTabs] = useState<EditorTab[]>(() => {
+    try {
+      const activeId = localStorage.getItem('infinity_active_project_id') || initialDefaultProjectMeta.id;
+      const savedTree = localStorage.getItem(`infinity_tree_${activeId}`);
+      if (savedTree) {
+        const parsed: FileNode = JSON.parse(savedTree);
+        const tabs: EditorTab[] = [];
+        if (parsed.children) {
+          for (const c of parsed.children.slice(0, 3)) {
+            if (c.type === 'file') {
+              tabs.push({
+                id: c.id,
+                name: c.name,
+                path: c.path,
+                language: c.language || 'plaintext',
+                content: c.content || ''
+              });
+            }
+          }
+        }
+        if (tabs.length > 0) return tabs;
+      }
+    } catch {}
 
-  const [activeTabId, setActiveTabId] = useState<string | null>('index-html');
+    return [
+      {
+        id: 'index-html',
+        name: 'index.html',
+        path: 'my-project/index.html',
+        language: 'html',
+        content: defaultStarterFiles.children![0].content
+      },
+      {
+        id: 'styles-css',
+        name: 'styles.css',
+        path: 'my-project/styles.css',
+        language: 'css',
+        content: defaultStarterFiles.children![1].content
+      },
+      {
+        id: 'app-js',
+        name: 'app.js',
+        path: 'my-project/app.js',
+        language: 'javascript',
+        content: defaultStarterFiles.children![2].content
+      }
+    ];
+  });
+
+  const [activeTabId, setActiveTabId] = useState<string | null>(() => {
+    return openTabs.length > 0 ? openTabs[0].id : null;
+  });
+
+  const setCurrentProject = (proj: ProjectMeta) => {
+    // Save current tree before switching
+    try {
+      localStorage.setItem(`infinity_tree_${currentProject.id}`, JSON.stringify(fileTree));
+    } catch {}
+
+    setCurrentProjectState(proj);
+    localStorage.setItem('infinity_active_project_id', proj.id);
+
+    // Load target project's tree if saved
+    try {
+      const targetTree = localStorage.getItem(`infinity_tree_${proj.id}`);
+      if (targetTree) {
+        const parsed: FileNode = JSON.parse(targetTree);
+        setFileTree(parsed);
+        const newTabs: EditorTab[] = [];
+        if (parsed.children) {
+          for (const c of parsed.children.slice(0, 3)) {
+            if (c.type === 'file') {
+              newTabs.push({
+                id: c.id,
+                name: c.name,
+                path: c.path,
+                language: c.language || 'plaintext',
+                content: c.content || ''
+              });
+            }
+          }
+        }
+        setOpenTabs(newTabs);
+        if (newTabs.length > 0) setActiveTabId(newTabs[0].id);
+      }
+    } catch {}
+  };
+
+  // Sync projects and tree to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('infinity_saved_projects', JSON.stringify(projects));
+      localStorage.setItem('infinity_active_project_id', currentProject.id);
+      localStorage.setItem(`infinity_tree_${currentProject.id}`, JSON.stringify(fileTree));
+    } catch (err) {
+      console.warn('Storage sync failed:', err);
+    }
+  }, [projects, currentProject, fileTree]);
   const [problems, setProblems] = useState<ProblemItem[]>([]);
 
   const activeTab = openTabs.find((t) => t.id === activeTabId) || (openTabs.length > 0 ? openTabs[0] : null);
@@ -494,74 +600,84 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const importProjectFromDirectory = async (files: FileList) => {
-    const imported = await ProjectImporter.importFromDirectoryInput(files);
-    const newProj: ProjectMeta = {
-      id: `proj_import_${Date.now()}`,
-      name: imported.projectName,
-      tagline: 'Imported Local Project',
-      technology: 'Imported Codebase',
-      framework: 'Local Files',
-      lastModified: 'Just now',
-      templateType: 'blank',
-      port: 5173,
-      rootPath: imported.projectName
-    };
+    try {
+      const imported = await ProjectImporter.importFromDirectoryInput(files);
+      const newProj: ProjectMeta = {
+        id: `proj_import_${Date.now()}`,
+        name: imported.projectName,
+        tagline: 'Imported Local Project',
+        technology: 'Imported Codebase',
+        framework: 'Local Files',
+        lastModified: 'Just now',
+        templateType: 'blank',
+        port: 5173,
+        rootPath: imported.projectName
+      };
 
-    setProjects(prev => [newProj, ...prev]);
-    setCurrentProject(newProj);
-    setFileTree(imported.rootNode);
+      setProjects(prev => [newProj, ...prev.filter(p => p.id !== newProj.id)]);
+      setCurrentProject(newProj);
+      setFileTree(imported.rootNode);
 
-    if (imported.mainFile) {
-      setOpenTabs([{
-        id: imported.mainFile.id,
-        name: imported.mainFile.name,
-        path: imported.mainFile.path,
-        language: imported.mainFile.language || 'plaintext',
-        content: imported.mainFile.content || ''
-      }]);
-      setActiveTabId(imported.mainFile.id);
-    } else if (imported.rootNode.children && imported.rootNode.children.length > 0) {
-      const first = imported.rootNode.children[0];
-      if (first.type === 'file') {
+      if (imported.mainFile) {
         setOpenTabs([{
-          id: first.id,
-          name: first.name,
-          path: first.path,
-          language: first.language || 'plaintext',
-          content: first.content || ''
+          id: imported.mainFile.id,
+          name: imported.mainFile.name,
+          path: imported.mainFile.path,
+          language: imported.mainFile.language || 'plaintext',
+          content: imported.mainFile.content || ''
         }]);
-        setActiveTabId(first.id);
+        setActiveTabId(imported.mainFile.id);
+      } else if (imported.rootNode.children && imported.rootNode.children.length > 0) {
+        const first = imported.rootNode.children[0];
+        if (first.type === 'file') {
+          setOpenTabs([{
+            id: first.id,
+            name: first.name,
+            path: first.path,
+            language: first.language || 'plaintext',
+            content: first.content || ''
+          }]);
+          setActiveTabId(first.id);
+        }
       }
+    } catch (err: any) {
+      console.error('Failed to import directory:', err);
+      alert(`Error importing folder: ${err.message || 'Unable to read files'}`);
     }
   };
 
   const importProjectFromZipFile = async (file: File) => {
-    const imported = await ProjectImporter.importFromZip(file);
-    const newProj: ProjectMeta = {
-      id: `proj_zip_${Date.now()}`,
-      name: imported.projectName,
-      tagline: 'Imported Zip Archive',
-      technology: 'Extracted Project',
-      framework: 'Zip Package',
-      lastModified: 'Just now',
-      templateType: 'blank',
-      port: 5173,
-      rootPath: imported.projectName
-    };
+    try {
+      const imported = await ProjectImporter.importFromZip(file);
+      const newProj: ProjectMeta = {
+        id: `proj_zip_${Date.now()}`,
+        name: imported.projectName,
+        tagline: 'Imported Zip Archive',
+        technology: 'Extracted Project',
+        framework: 'Zip Package',
+        lastModified: 'Just now',
+        templateType: 'blank',
+        port: 5173,
+        rootPath: imported.projectName
+      };
 
-    setProjects(prev => [newProj, ...prev]);
-    setCurrentProject(newProj);
-    setFileTree(imported.rootNode);
+      setProjects(prev => [newProj, ...prev.filter(p => p.id !== newProj.id)]);
+      setCurrentProject(newProj);
+      setFileTree(imported.rootNode);
 
-    if (imported.mainFile) {
-      setOpenTabs([{
-        id: imported.mainFile.id,
-        name: imported.mainFile.name,
-        path: imported.mainFile.path,
-        language: imported.mainFile.language || 'plaintext',
-        content: imported.mainFile.content || ''
-      }]);
-      setActiveTabId(imported.mainFile.id);
+      if (imported.mainFile) {
+        setOpenTabs([{
+          id: imported.mainFile.id,
+          name: imported.mainFile.name,
+          path: imported.mainFile.path,
+          language: imported.mainFile.language || 'plaintext',
+          content: imported.mainFile.content || ''
+        }]);
+        setActiveTabId(imported.mainFile.id);
+      }
+    } catch (err: any) {
+      console.error('Failed to import zip:', err);
+      alert(`Error importing ZIP: ${err.message || 'Invalid ZIP format'}`);
     }
   };
 

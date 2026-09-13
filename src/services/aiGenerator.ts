@@ -22,6 +22,9 @@ export class AIGenerator {
       localStorage.getItem('infinity_gemini_api_key') ||
       (import.meta as any).env?.VITE_GEMINI_API_KEY ||
       (import.meta as any).env?.GEMINI_API_KEY ||
+      (process as any)?.env?.GEMINI_API_KEY ||
+      (process as any)?.env?.VITE_GEMINI_API_KEY ||
+      (window as any)?.__GEMINI_API_KEY__ ||
       ''
     );
   }
@@ -76,10 +79,15 @@ export class AIGenerator {
 The user wants to generate a complete, 100% production-ready, beautiful, interactive application.
 
 CRITICAL INSTRUCTIONS & ANTIGRAVITY QUALITY STANDARD:
-1. NEVER generate dummy placeholders, empty TODOs, or generic boilerplate cards.
-2. The generated code MUST be 100% complete, bug-free, fully functional, and visually stunning.
+1. PRECISION COMPREHENSION:
+   - Carefully analyze what the user is asking to build in English, Tamil (தமிழ்), or Tanglish.
+   - You MUST build THAT EXACT requested application (e.g. Alarm Clock, Calculator, Todo List, Weather App, Quiz App, Game, Notes App, Habit Tracker, E-commerce dashboard, Portfolio, etc.).
+   - NEVER generate generic or unrelated boilerplate templates.
+2. 100% WORKING CODE STANDARD:
+   - NEVER generate dummy placeholders, empty TODOs, or mock buttons.
+   - The generated code MUST be 100% complete, bug-free, fully functional, and visually stunning.
 3. UI/UX STANDARD:
-   - Modern dark glassmorphism or sleek minimalist theme (#0a0d15, #0f1424, #121828)
+   - Modern dark glassmorphism theme (#0a0d15, #0f1424, #121828) with vibrant accent colors
    - Smooth CSS transitions, fluid 60FPS micro-interactions, responsive flex/grid layouts
    - Beautiful badges, glow effects, crisp typography, and mobile-friendly touch targets
 4. LOGIC STANDARD:
@@ -170,7 +178,20 @@ Respond ONLY with valid JSON matching this schema:
         const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!rawText) throw new Error(`Empty response from Gemini API [${modelName}]`);
 
-        return JSON.parse(rawText);
+        // Sanitize markdown fences if present
+        let cleaned = rawText.trim();
+        if (cleaned.startsWith('```json')) {
+          cleaned = cleaned.replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
+        } else if (cleaned.startsWith('```')) {
+          cleaned = cleaned.replace(/^```\s*/, '').replace(/```\s*$/i, '');
+        }
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1) {
+          cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+        }
+
+        return JSON.parse(cleaned);
       } catch (err) {
         console.warn(`Attempt with model ${modelName} failed:`, err);
         lastError = err;
