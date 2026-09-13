@@ -105,12 +105,73 @@ export interface AgentStep {
   diffs?: { file: string; oldCode: string; newCode: string }[];
 }
 
+export type AgentExecutionPhase = 
+  | 'idle' 
+  | 'understanding' 
+  | 'planning' 
+  | 'waiting_approval' 
+  | 'scaffolding' 
+  | 'building' 
+  | 'terminal_exec' 
+  | 'browser_testing' 
+  | 'self_healing' 
+  | 'completed' 
+  | 'failed';
+
+export interface BuildPlan {
+  title: string;
+  analysis: string[];
+  steps: {
+    id: string;
+    title: string;
+    description?: string;
+    status: 'pending' | 'running' | 'completed' | 'failed';
+  }[];
+  techStack: string;
+  architecture: {
+    uiTokens: string[];
+    dataFlow: string;
+    components: string[];
+  };
+}
+
+export interface E2ETestItem {
+  id: string;
+  name: string;
+  action: string;
+  status: 'pending' | 'running' | 'passed' | 'failed';
+  duration?: string;
+  errorDetails?: string;
+}
+
+export interface SelfHealingRecord {
+  id: string;
+  originalError: string;
+  rootCause: string;
+  fileFixed: string;
+  diffSummary: string;
+  status: 'diagnosing' | 'patching' | 'verified';
+}
+
 export interface AgentRun {
   id: string;
   prompt: string;
-  status: 'idle' | 'planning' | 'running' | 'paused_for_approval' | 'completed' | 'failed';
+  status: 'idle' | 'understanding' | 'planning' | 'waiting_approval' | 'running' | 'paused_for_approval' | 'testing' | 'healing' | 'completed' | 'failed';
+  phase: AgentExecutionPhase;
+  plan?: BuildPlan;
   steps: AgentStep[];
   currentStepIndex: number;
+  terminalLogs: string[];
+  tests: E2ETestItem[];
+  selfHealingLogs: SelfHealingRecord[];
+  summary?: {
+    filesCreated: number;
+    features: string[];
+    testsPassed: number;
+    issuesFixed: number;
+    tamilSummary?: string;
+    previewUrl?: string;
+  };
   startTime: string;
   endTime?: string;
 }
