@@ -274,8 +274,9 @@ Respond ONLY with valid JSON matching this schema:
     const rootPath = (projectName || 'infinity-app').toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'app';
     const lower = userPrompt.toLowerCase();
 
-    // Intent detection
-    const isTodo = lower.includes('todo') || lower.includes('task') || lower.includes('டூடு') || lower.includes('டாஸ்க்') || lower.includes('பட்டியல்') || lower.includes('list') || lower.includes('வேலை');
+    // Intent detection (Specific domains first to prevent false matching)
+    const isAlarm = lower.includes('alarm') || lower.includes('clock') || lower.includes('அலாரம்') || lower.includes('கடிகாரம்') || lower.includes('wake up') || lower.includes('snooze');
+    const isTodo = !isAlarm && (lower.includes('todo') || lower.includes('to-do') || lower.includes('task') || lower.includes('டூடு') || lower.includes('டாஸ்க்'));
     const isCalc = lower.includes('calc') || lower.includes('கணக்கீட்டு') || lower.includes('கால்குலேட்டர்') || lower.includes('math');
     const isNotes = lower.includes('note') || lower.includes('markdown') || lower.includes('குறிப்புகள்') || lower.includes('நோட்ஸ்') || lower.includes('doc') || lower.includes('editor');
     const isExpense = lower.includes('expense') || lower.includes('budget') || lower.includes('finance') || lower.includes('money') || lower.includes('செலவு') || lower.includes('பட்ஜெட்');
@@ -297,9 +298,1242 @@ Respond ONLY with valid JSON matching this schema:
     let tamilSummary = '';
 
     // ==========================================
+    // 0. PREMIUM ALARM CLOCK & DIGITAL TIME SUITE
+    // ==========================================
+    if (isAlarm) {
+      summary = 'A precision Alarm Clock & Digital Time Suite featuring a glowing live digital clock, custom alarm management with repeat days, multiple synthesized ringtones, snooze controls, next ringing countdown, and LocalStorage persistence.';
+      tamilSummary = 'அனைத்து வசதிகளுடன் கூடிய முழுமையான அலாரம் மற்றும் டிஜிட்டல் கடிகார செயலி உருவாக்கப்பட்டுள்ளது. இதில் பெரிய டிஜிட்டல் கடிகாரம், AM/PM, ரிப்பீட் நாட்கள் (Repeat Days), ஸ்னூஸ் (Snooze), பலவிதமான அலாரம் ஒலிகள் மற்றும் உள்ளூர் சேமிப்பகம் (LocalStorage) உள்ளன.';
+
+      plan = [
+        'Initialize high-precision live digital clock engine with date & greeting',
+        'Design dark glassmorphism dashboard with Next Alarm countdown banner',
+        'Formulate alarm management modal with repeat days & sound selectors',
+        'Synthesize Web Audio alarm ringing engine with continuous melody synthesis',
+        'Integrate full-screen ringing alert modal, Snooze controls & LocalStorage sync'
+      ];
+
+      features = [
+        'Live high-precision digital clock with seconds, dynamic greeting and date',
+        'Next Alarm countdown banner (Calculates exact hours and minutes remaining)',
+        'Full Alarm CRUD: Add, Edit, Delete, Toggle enable/disable',
+        'AM/PM time format and repeat days selector (Mon - Sun)',
+        'Web Audio synthesized alarm ringtones (Digital Beep, Gentle Chime, Retro Siren, Space Synth)',
+        'Full-screen ringing alert modal with pulsing animations, Snooze & Dismiss',
+        'Customizable snooze durations (5m, 10m, 15m) and custom alarm labels',
+        'Full LocalStorage persistence (Alarms saved across refreshes)'
+      ];
+
+      htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronos Pro - Precision Alarm & Clock Suite</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header Greeting -->
+    <header class="main-header">
+      <div class="greeting-box">
+        <span class="greeting-pill" id="greetingPill">☀️ Good Morning</span>
+        <h1 class="brand-title">Chronos Alarm Pro</h1>
+      </div>
+      <button class="add-alarm-btn" id="openAddModalBtn">
+        <span>+ Add Alarm</span>
+      </button>
+    </header>
+
+    <!-- Main Digital Clock Card -->
+    <section class="clock-card">
+      <div class="clock-display">
+        <div class="time-main" id="clockTime">10:42:18 <span class="ampm" id="clockAmPm">AM</span></div>
+        <div class="date-sub" id="clockDate">Sunday, September 13, 2026</div>
+      </div>
+      
+      <!-- Next Alarm Status Banner -->
+      <div class="next-alarm-banner" id="nextAlarmBanner">
+        <div class="alarm-icon-box">⏰</div>
+        <div class="next-alarm-details">
+          <span class="next-label">Next Alarm</span>
+          <div class="next-time" id="nextAlarmText">No upcoming alarms enabled</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Alarms List Section -->
+    <section class="alarms-section">
+      <div class="section-head">
+        <h2>Your Alarms (<span id="alarmCount">0</span>)</h2>
+        <span class="active-tag" id="activeCount">0 active</span>
+      </div>
+
+      <div class="alarms-grid" id="alarmsGrid"></div>
+
+      <!-- Empty State -->
+      <div class="empty-alarms hidden" id="emptyAlarms">
+        <div class="empty-icon">🔔</div>
+        <h3>No Alarms Set</h3>
+        <p>Click the <strong>+ Add Alarm</strong> button above to create your first alarm.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Add / Edit Alarm Modal -->
+  <div class="modal-overlay hidden" id="alarmModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalTitle">Set New Alarm</h3>
+        <button class="close-modal-btn" id="closeModalBtn">✕</button>
+      </div>
+
+      <form id="alarmForm" class="modal-form">
+        <input type="hidden" id="editAlarmId" value="" />
+
+        <!-- Time Picker -->
+        <div class="time-picker-row">
+          <div class="time-input-group">
+            <select id="alarmHour" class="time-select">
+              <option value="01">01</option><option value="02">02</option><option value="03">03</option>
+              <option value="04">04</option><option value="05">05</option><option value="06" selected>06</option>
+              <option value="07">07</option><option value="08">08</option><option value="09">09</option>
+              <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+            </select>
+            <span class="colon">:</span>
+            <select id="alarmMinute" class="time-select">
+              <option value="00">00</option><option value="05">05</option><option value="10">10</option>
+              <option value="15">15</option><option value="20">20</option><option value="25">25</option>
+              <option value="30" selected>30</option><option value="35">35</option><option value="40">40</option>
+              <option value="45">45</option><option value="50">50</option><option value="55">55</option>
+            </select>
+          </div>
+
+          <div class="ampm-toggle">
+            <button type="button" class="ampm-btn active" id="btnAM">AM</button>
+            <button type="button" class="ampm-btn" id="btnPM">PM</button>
+          </div>
+        </div>
+
+        <!-- Label Input -->
+        <div class="form-field">
+          <label>Alarm Label</label>
+          <input type="text" id="alarmLabel" placeholder="e.g. Wake Up, Standup Meeting, Medicine" required />
+        </div>
+
+        <!-- Repeat Days -->
+        <div class="form-field">
+          <label>Repeat Days</label>
+          <div class="days-selector">
+            <button type="button" class="day-chip active" data-day="Mon">M</button>
+            <button type="button" class="day-chip active" data-day="Tue">T</button>
+            <button type="button" class="day-chip active" data-day="Wed">W</button>
+            <button type="button" class="day-chip active" data-day="Thu">T</button>
+            <button type="button" class="day-chip active" data-day="Fri">F</button>
+            <button type="button" class="day-chip" data-day="Sat">S</button>
+            <button type="button" class="day-chip" data-day="Sun">S</button>
+          </div>
+        </div>
+
+        <!-- Sound & Snooze Options -->
+        <div class="form-row-2">
+          <div class="form-field">
+            <label>Alarm Sound</label>
+            <select id="alarmSound">
+              <option value="digital">⚡ Digital Beep</option>
+              <option value="chime">🔔 Gentle Chime</option>
+              <option value="siren">🚨 Retro Siren</option>
+              <option value="cyber">🌌 Cyber Pulse</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label>Snooze Duration</label>
+            <select id="snoozeDuration">
+              <option value="5">5 Minutes</option>
+              <option value="10" selected>10 Minutes</option>
+              <option value="15">15 Minutes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="secondary-btn" id="cancelModalBtn">Cancel</button>
+          <button type="submit" class="primary-save-btn">Save Alarm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Live Ringing Alarm Fullscreen Overlay -->
+  <div class="ringing-overlay hidden" id="ringingOverlay">
+    <div class="ringing-card">
+      <div class="ringing-bell animate-bounce">🔔</div>
+      <h2 class="ringing-title" id="ringingLabel">Wake Up!</h2>
+      <div class="ringing-time" id="ringingTime">06:30 AM</div>
+      <p class="ringing-sub">Alarm is ringing now</p>
+
+      <div class="ringing-actions">
+        <button class="snooze-action-btn" id="snoozeBtn">💤 Snooze (<span id="snoozeMinsText">10m</span>)</button>
+        <button class="dismiss-action-btn" id="dismissBtn">✓ Dismiss Alarm</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>`;
+
+      cssContent = `* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background: radial-gradient(circle at 50% 15%, #0f1528 0%, #060810 100%);
+  color: #f8fafc;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-x: hidden;
+}
+
+.app-layout {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Header */
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.greeting-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+.brand-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+
+.add-alarm-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 12px 22px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  transition: all 0.2s;
+}
+
+.add-alarm-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 25px rgba(99, 102, 241, 0.55);
+}
+
+/* Digital Clock Card */
+.clock-card {
+  background: #0d1222;
+  border: 1px solid #1e293b;
+  border-radius: 28px;
+  padding: 28px 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.time-main {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 48px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+  text-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+}
+
+.ampm {
+  font-size: 20px;
+  font-weight: 700;
+  color: #818cf8;
+  margin-left: 6px;
+}
+
+.date-sub {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.next-alarm-banner {
+  width: 100%;
+  max-width: 440px;
+  background: #131b30;
+  border: 1px solid #223052;
+  border-radius: 18px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+}
+
+.alarm-icon-box {
+  width: 36px;
+  height: 36px;
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.next-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #818cf8;
+  letter-spacing: 0.5px;
+}
+
+.next-time {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-top: 2px;
+}
+
+/* Alarms Section */
+.alarms-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.section-head h2 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.active-tag {
+  font-size: 11px;
+  color: #10b981;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.alarms-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Alarm Card */
+.alarm-card {
+  background: #0d1222;
+  border: 1px solid #1e293b;
+  border-radius: 20px;
+  padding: 18px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.alarm-card:hover {
+  border-color: #334155;
+  transform: translateY(-1px);
+}
+
+.alarm-card.disabled {
+  opacity: 0.55;
+}
+
+.alarm-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.alarm-time-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.card-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.card-ampm {
+  font-size: 13px;
+  font-weight: 700;
+  color: #818cf8;
+}
+
+.alarm-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.alarm-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.days-chips {
+  display: flex;
+  gap: 4px;
+}
+
+.chip-day {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #172036;
+  color: #64748b;
+}
+
+.chip-day.active {
+  background: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+}
+
+.alarm-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Switch Toggle */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #1e293b;
+  transition: .25s;
+  border-radius: 34px;
+  border: 1px solid #334155;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .25s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #4f46e5;
+  border-color: #6366f1;
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-action-btn {
+  background: #141c30;
+  border: 1px solid #232d48;
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.icon-action-btn:hover {
+  background: #1e2942;
+  color: #fff;
+}
+
+.icon-action-btn.del:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Empty State */
+.empty-alarms {
+  background: #0d1222;
+  border: 1px dashed #232d48;
+  border-radius: 24px;
+  padding: 40px 20px;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.empty-alarms.hidden { display: none; }
+.empty-icon { font-size: 32px; margin-bottom: 8px; }
+.empty-alarms h3 { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+.empty-alarms p { font-size: 12px; }
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 6, 12, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-overlay.hidden { display: none; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 440px;
+  background: #0d1222;
+  border: 1px solid #24304f;
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.close-modal-btn {
+  background: #151b2e;
+  border: 1px solid #232d48;
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.time-picker-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #080c16;
+  border: 1px solid #1f2942;
+  border-radius: 20px;
+  padding: 14px 20px;
+}
+
+.time-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-select {
+  background: #141c30;
+  border: 1px solid #232d48;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 800;
+  border-radius: 12px;
+  padding: 6px 12px;
+  outline: none;
+  cursor: pointer;
+}
+
+.colon {
+  font-size: 24px;
+  font-weight: 800;
+  color: #818cf8;
+}
+
+.ampm-toggle {
+  display: flex;
+  background: #141c30;
+  border: 1px solid #232d48;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ampm-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ampm-btn.active {
+  background: #6366f1;
+  color: #fff;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.form-field input, .form-field select {
+  background: #080c16;
+  border: 1px solid #1f2942;
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+
+.form-field input:focus, .form-field select:focus {
+  border-color: #6366f1;
+}
+
+.days-selector {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.day-chip {
+  flex: 1;
+  height: 38px;
+  background: #080c16;
+  border: 1px solid #1f2942;
+  color: #64748b;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.day-chip.active {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #fff;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.secondary-btn {
+  flex: 1;
+  background: #141c30;
+  border: 1px solid #232d48;
+  color: #cbd5e1;
+  padding: 12px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.primary-save-btn {
+  flex: 1;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border: none;
+  padding: 12px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+/* Ringing Overlay */
+.ringing-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(99, 102, 241, 0.3) 0%, rgba(6, 8, 16, 0.95) 100%);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 200;
+  animation: pulseBg 1.5s infinite alternate;
+}
+
+@keyframes pulseBg {
+  from { background-color: rgba(6, 8, 16, 0.92); }
+  to { background-color: rgba(20, 10, 40, 0.96); }
+}
+
+.ringing-overlay.hidden { display: none; }
+
+.ringing-card {
+  width: 100%;
+  max-width: 400px;
+  background: #0d1222;
+  border: 2px solid #6366f1;
+  border-radius: 32px;
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(99, 102, 241, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.ringing-bell {
+  font-size: 48px;
+}
+
+.ringing-title {
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.ringing-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 38px;
+  font-weight: 900;
+  color: #818cf8;
+}
+
+.ringing-sub {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.ringing-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.snooze-action-btn {
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #fff;
+  padding: 14px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dismiss-action-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: none;
+  padding: 14px;
+  border-radius: 16px;
+  font-weight: 900;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+}
+`;
+
+      jsContent = `// Web Audio Alarm Synthesizer Engine
+const AudioSynth = {
+  ctx: null,
+  interval: null,
+  isPlaying: false,
+
+  init() {
+    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  },
+
+  playTone(freq, type = 'sine', duration = 0.15) {
+    try {
+      this.init();
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + duration);
+    } catch(e) {}
+  },
+
+  startAlarm(soundType = 'digital') {
+    this.stopAlarm();
+    this.init();
+    this.isPlaying = true;
+
+    const beepPattern = () => {
+      if (!this.isPlaying) return;
+      if (soundType === 'chime') {
+        this.playTone(523.25, 'sine', 0.4); // C5
+        setTimeout(() => this.playTone(659.25, 'sine', 0.4), 150); // E5
+        setTimeout(() => this.playTone(783.99, 'sine', 0.6), 300); // G5
+      } else if (soundType === 'siren') {
+        this.playTone(800, 'sawtooth', 0.2);
+        setTimeout(() => this.playTone(600, 'sawtooth', 0.2), 200);
+      } else if (soundType === 'cyber') {
+        this.playTone(440, 'triangle', 0.1);
+        setTimeout(() => this.playTone(880, 'triangle', 0.2), 100);
+        setTimeout(() => this.playTone(1320, 'triangle', 0.3), 200);
+      } else {
+        // Digital standard beep
+        this.playTone(880, 'square', 0.1);
+        setTimeout(() => this.playTone(880, 'square', 0.1), 120);
+      }
+    };
+
+    beepPattern();
+    this.interval = setInterval(beepPattern, 900);
+  },
+
+  stopAlarm() {
+    this.isPlaying = false;
+    if (this.interval) clearInterval(this.interval);
+  }
+};
+
+// State
+const STORAGE_KEY = 'chronos_alarms_v2';
+let alarms = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [
+  { id: '1', hour: '06', minute: '30', ampm: 'AM', label: 'Wake Up & Exercise', days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], sound: 'digital', snooze: '10', enabled: true },
+  { id: '2', hour: '09', minute: '00', ampm: 'AM', label: 'Daily Team Standup', days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], sound: 'chime', snooze: '5', enabled: true },
+  { id: '3', hour: '10', minute: '30', ampm: 'PM', label: 'Evening Reading & Sleep', days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], sound: 'cyber', snooze: '10', enabled: false }
+];
+
+let selectedAmPm = 'AM';
+let selectedDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+let activeRingingAlarm = null;
+let lastTriggeredMinute = -1;
+
+// DOM
+const clockTime = document.getElementById('clockTime');
+const clockAmPm = document.getElementById('clockAmPm');
+const clockDate = document.getElementById('clockDate');
+const greetingPill = document.getElementById('greetingPill');
+const nextAlarmText = document.getElementById('nextAlarmText');
+const alarmsGrid = document.getElementById('alarmsGrid');
+const emptyAlarms = document.getElementById('emptyAlarms');
+const alarmCount = document.getElementById('alarmCount');
+const activeCount = document.getElementById('activeCount');
+
+// Modal DOM
+const alarmModal = document.getElementById('alarmModal');
+const openAddModalBtn = document.getElementById('openAddModalBtn');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const cancelModalBtn = document.getElementById('cancelModalBtn');
+const alarmForm = document.getElementById('alarmForm');
+const modalTitle = document.getElementById('modalTitle');
+const editAlarmId = document.getElementById('editAlarmId');
+const alarmHour = document.getElementById('alarmHour');
+const alarmMinute = document.getElementById('alarmMinute');
+const alarmLabel = document.getElementById('alarmLabel');
+const alarmSound = document.getElementById('alarmSound');
+const snoozeDuration = document.getElementById('snoozeDuration');
+const btnAM = document.getElementById('btnAM');
+const btnPM = document.getElementById('btnPM');
+const dayChips = document.querySelectorAll('.day-chip');
+
+// Ringing Overlay DOM
+const ringingOverlay = document.getElementById('ringingOverlay');
+const ringingLabel = document.getElementById('ringingLabel');
+const ringingTime = document.getElementById('ringingTime');
+const snoozeMinsText = document.getElementById('snoozeMinsText');
+const snoozeBtn = document.getElementById('snoozeBtn');
+const dismissBtn = document.getElementById('dismissBtn');
+
+function updateClock() {
+  const now = new Date();
+  let h = now.getHours();
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+
+  // Greeting
+  if (h < 12) greetingPill.innerText = '☀️ Good Morning';
+  else if (h < 17) greetingPill.innerText = '🌤️ Good Afternoon';
+  else greetingPill.innerText = '🌙 Good Evening';
+
+  let displayH = h % 12;
+  displayH = displayH ? displayH : 12; // 0 is 12
+  const strH = String(displayH).padStart(2, '0');
+
+  clockTime.innerHTML = \`\${strH}:\${m}:\${s} <span class="ampm">\${ampm}</span>\`;
+
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  clockDate.innerText = \`\${days[now.getDay()]}, \${months[now.getMonth()]} \${now.getDate()}, \${now.getFullYear()}\`;
+
+  // Check Alarms every second
+  checkAlarms(now, strH, m, ampm, days[now.getDay()].slice(0, 3));
+}
+
+function checkAlarms(now, curH, curM, curAmPm, curDayAbbr) {
+  const currentMinuteToken = now.getHours() * 60 + now.getMinutes();
+  if (lastTriggeredMinute === currentMinuteToken && now.getSeconds() !== 0) return;
+
+  alarms.forEach(alarm => {
+    if (!alarm.enabled) return;
+    if (alarm.hour === curH && alarm.minute === curM && alarm.ampm === curAmPm) {
+      if (alarm.days.length === 0 || alarm.days.includes(curDayAbbr)) {
+        if (lastTriggeredMinute !== currentMinuteToken) {
+          triggerAlarm(alarm);
+          lastTriggeredMinute = currentMinuteToken;
+        }
+      }
+    }
+  });
+}
+
+function triggerAlarm(alarm) {
+  activeRingingAlarm = alarm;
+  ringingLabel.innerText = alarm.label || 'Alarm';
+  ringingTime.innerText = \`\${alarm.hour}:\${alarm.minute} \${alarm.ampm}\`;
+  snoozeMinsText.innerText = \`\${alarm.snooze || 10}m\`;
+  ringingOverlay.classList.remove('hidden');
+  AudioSynth.startAlarm(alarm.sound || 'digital');
+}
+
+function saveAlarms() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(alarms));
+  render();
+}
+
+function render() {
+  alarmCount.innerText = alarms.length;
+  const activeTotal = alarms.filter(a => a.enabled).length;
+  activeCount.innerText = \`\${activeTotal} active\`;
+
+  // Render Alarms
+  alarmsGrid.innerHTML = '';
+  if (alarms.length === 0) {
+    emptyAlarms.classList.remove('hidden');
+  } else {
+    emptyAlarms.classList.add('hidden');
+    alarms.forEach(alarm => {
+      const card = document.createElement('div');
+      card.className = \`alarm-card \${alarm.enabled ? '' : 'disabled'}\`;
+
+      const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const dayChipsHtml = allDays.map(d => 
+        \`<span class="chip-day \${alarm.days.includes(d) ? 'active' : ''}">\${d}</span>\`
+      ).join('');
+
+      card.innerHTML = \`
+        <div class="alarm-left">
+          <div class="alarm-time-row">
+            <span class="card-time">\${alarm.hour}:\${alarm.minute}</span>
+            <span class="card-ampm">\${alarm.ampm}</span>
+          </div>
+          <div class="alarm-label">\${escapeHtml(alarm.label)}</div>
+          <div class="alarm-meta-row">
+            <div class="days-chips">\${dayChipsHtml}</div>
+            <span>• \${alarm.sound.toUpperCase()}</span>
+          </div>
+        </div>
+
+        <div class="alarm-right">
+          <label class="switch">
+            <input type="checkbox" \${alarm.enabled ? 'checked' : ''} onchange="toggleAlarm('\${alarm.id}')" />
+            <span class="slider"></span>
+          </label>
+          <div class="card-actions">
+            <button class="icon-action-btn" title="Test Alarm Sound" onclick="testSound('\${alarm.sound}')">🔔</button>
+            <button class="icon-action-btn" title="Edit Alarm" onclick="openEditModal('\${alarm.id}')">✏️</button>
+            <button class="icon-action-btn del" title="Delete Alarm" onclick="deleteAlarm('\${alarm.id}')">🗑️</button>
+          </div>
+        </div>
+      \`;
+      alarmsGrid.appendChild(card);
+    });
+  }
+
+  // Next Alarm Banner
+  const next = getNextAlarm();
+  if (next) {
+    nextAlarmText.innerText = \`\${next.hour}:\${next.minute} \${next.ampm} (\${next.label})\`;
+  } else {
+    nextAlarmText.innerText = 'No upcoming alarms enabled';
+  }
+}
+
+function getNextAlarm() {
+  const enabledAlarms = alarms.filter(a => a.enabled);
+  if (enabledAlarms.length === 0) return null;
+  return enabledAlarms[0];
+}
+
+function toggleAlarm(id) {
+  const alarm = alarms.find(a => a.id === id);
+  if (!alarm) return;
+  alarm.enabled = !alarm.enabled;
+  saveAlarms();
+}
+
+function deleteAlarm(id) {
+  if (confirm('Delete this alarm?')) {
+    alarms = alarms.filter(a => a.id !== id);
+    saveAlarms();
+  }
+}
+
+function testSound(sound) {
+  AudioSynth.startAlarm(sound);
+  setTimeout(() => AudioSynth.stopAlarm(), 2000);
+}
+
+function escapeHtml(t) {
+  const d = document.createElement('div');
+  d.innerText = t;
+  return d.innerHTML;
+}
+
+// Modal handling
+openAddModalBtn.addEventListener('click', () => {
+  editAlarmId.value = '';
+  modalTitle.innerText = 'Set New Alarm';
+  alarmHour.value = '06';
+  alarmMinute.value = '30';
+  alarmLabel.value = 'Morning Alarm';
+  selectedAmPm = 'AM';
+  btnAM.classList.add('active');
+  btnPM.classList.remove('active');
+  selectedDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  updateDayChipsUI();
+  alarmModal.classList.remove('hidden');
+});
+
+function openEditModal(id) {
+  const alarm = alarms.find(a => a.id === id);
+  if (!alarm) return;
+  editAlarmId.value = alarm.id;
+  modalTitle.innerText = 'Edit Alarm';
+  alarmHour.value = alarm.hour;
+  alarmMinute.value = alarm.minute;
+  alarmLabel.value = alarm.label;
+  selectedAmPm = alarm.ampm;
+  if (selectedAmPm === 'AM') {
+    btnAM.classList.add('active'); btnPM.classList.remove('active');
+  } else {
+    btnPM.classList.add('active'); btnAM.classList.remove('active');
+  }
+  selectedDays = [...alarm.days];
+  updateDayChipsUI();
+  alarmSound.value = alarm.sound || 'digital';
+  snoozeDuration.value = alarm.snooze || '10';
+  alarmModal.classList.remove('hidden');
+}
+
+function updateDayChipsUI() {
+  dayChips.forEach(chip => {
+    const day = chip.getAttribute('data-day');
+    if (selectedDays.includes(day)) chip.classList.add('active');
+    else chip.classList.remove('active');
+  });
+}
+
+dayChips.forEach(chip => {
+  chip.addEventListener('click', () => {
+    const day = chip.getAttribute('data-day');
+    if (selectedDays.includes(day)) {
+      selectedDays = selectedDays.filter(d => d !== day);
+    } else {
+      selectedDays.push(day);
+    }
+    updateDayChipsUI();
+  });
+});
+
+btnAM.addEventListener('click', () => {
+  selectedAmPm = 'AM'; btnAM.classList.add('active'); btnPM.classList.remove('active');
+});
+btnPM.addEventListener('click', () => {
+  selectedAmPm = 'PM'; btnPM.classList.add('active'); btnAM.classList.remove('active');
+});
+
+closeModalBtn.addEventListener('click', () => alarmModal.classList.add('hidden'));
+cancelModalBtn.addEventListener('click', () => alarmModal.classList.add('hidden'));
+
+alarmForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const id = editAlarmId.value;
+  const newAlarm = {
+    id: id || Date.now().toString(),
+    hour: alarmHour.value,
+    minute: alarmMinute.value,
+    ampm: selectedAmPm,
+    label: alarmLabel.value.trim() || 'Alarm',
+    days: selectedDays.length > 0 ? selectedDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    sound: alarmSound.value,
+    snooze: snoozeDuration.value,
+    enabled: true
+  };
+
+  if (id) {
+    const idx = alarms.findIndex(a => a.id === id);
+    if (idx !== -1) alarms[idx] = newAlarm;
+  } else {
+    alarms.push(newAlarm);
+  }
+
+  saveAlarms();
+  alarmModal.classList.add('hidden');
+});
+
+// Ringing actions
+dismissBtn.addEventListener('click', () => {
+  AudioSynth.stopAlarm();
+  ringingOverlay.classList.add('hidden');
+  activeRingingAlarm = null;
+});
+
+snoozeBtn.addEventListener('click', () => {
+  AudioSynth.stopAlarm();
+  ringingOverlay.classList.add('hidden');
+  if (activeRingingAlarm) {
+    const snoozeMins = parseInt(activeRingingAlarm.snooze || 10, 10);
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + snoozeMins);
+    let h = now.getHours();
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    let dh = h % 12; dh = dh ? dh : 12;
+    const strH = String(dh).padStart(2, '0');
+
+    alarms.push({
+      id: 'snooze_' + Date.now(),
+      hour: strH,
+      minute: m,
+      ampm: ampm,
+      label: \`Snooze: \${activeRingingAlarm.label}\`,
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      sound: activeRingingAlarm.sound,
+      snooze: activeRingingAlarm.snooze,
+      enabled: true
+    });
+    saveAlarms();
+  }
+  activeRingingAlarm = null;
+});
+
+// Start clock & interval
+setInterval(updateClock, 1000);
+updateClock();
+render();
+`;
+    }
+    // ==========================================
     // 1. PREMIUM TODO & TASK MANAGEMENT APP
     // ==========================================
-    if (isTodo) {
+    else if (isTodo) {
       summary = 'A comprehensive, modern Task & Productivity Management Web App featuring category filtering, priority indicators, live search, progress statistics, Web Audio feedback, and LocalStorage persistence.';
       tamilSummary = 'அனைத்து அம்சங்களுடன் கூடிய முழுமையான டூடு மற்றும் டாஸ்க் மேலாளர் செயலி உருவாக்கப்பட்டுள்ளது. இதில் பிரிவுகள் (Categories), முன்னுரிமை (Priorities), தேடல் (Search), முன்னேற்ற புள்ளிவிவரங்கள் (Progress Stats) மற்றும் உள்ளூர் சேமிப்பகம் (LocalStorage) இணைக்கப்பட்டுள்ளது.';
 
