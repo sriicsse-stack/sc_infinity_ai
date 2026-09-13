@@ -10,15 +10,16 @@ import {
   Bell, 
   ChevronDown, 
   Check, 
-  Sparkles,
-  Layers,
-  LogIn,
-  LogOut,
-  User as UserIcon,
-  CreditCard,
-  GraduationCap,
-  Zap,
-  Terminal as TerminalIcon
+  Sparkles, 
+  Layers, 
+  LogIn, 
+  LogOut, 
+  User as UserIcon, 
+  CreditCard, 
+  GraduationCap, 
+  Zap, 
+  Terminal as TerminalIcon,
+  Key
 } from 'lucide-react';
 import { AnimatedInfinity } from '../common/AnimatedInfinity';
 import { useTheme } from '../../context/ThemeContext';
@@ -35,6 +36,7 @@ interface TopHeaderProps {
   onOpenDeployModal: () => void;
   onOpenSettingsModal: () => void;
   onOpenPricingModal: () => void;
+  onOpenApiKeyModal?: () => void;
   onToggleHomeView: () => void;
   isHomeViewActive: boolean;
   onEnsureBottomPanelVisible?: () => void;
@@ -49,6 +51,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onOpenDeployModal,
   onOpenSettingsModal,
   onOpenPricingModal,
+  onOpenApiKeyModal,
   onToggleHomeView,
   isHomeViewActive,
   onEnsureBottomPanelVisible,
@@ -59,7 +62,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
   const { currentProject, projects, setCurrentProject, activeTab, openTabs } = useProject();
-  const { model, setModel, infinityState, setInfinityState } = useAI();
+  const { model, setModel, infinityState, setInfinityState, geminiApiKey } = useAI();
   const { isRunning, executeActiveCode, refreshPreview, setActiveBottomTab } = useRuntime();
   const { user, signInWithGoogle, signOut } = useAuth();
   const { currentPlan, creditsRemaining } = useCredits();
@@ -204,6 +207,22 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           <span className="font-semibold capitalize text-[11px]">{currentPlan}</span>
           <span className="text-[10px] opacity-75 font-mono">({creditsRemaining})</span>
         </button>
+
+        {/* Gemini API Key Connection Button */}
+        {onOpenApiKeyModal && (
+          <button
+            onClick={onOpenApiKeyModal}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer text-[11px] font-medium ${
+              geminiApiKey
+                ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/40'
+                : 'bg-amber-950/30 border-amber-500/40 text-amber-300 hover:bg-amber-900/40 animate-pulse'
+            }`}
+            title={geminiApiKey ? "Gemini API Key Connected (Click to modify)" : "Connect Free Gemini API Key"}
+          >
+            <Key className="w-3 h-3 text-amber-400" />
+            <span className="hidden sm:inline">{geminiApiKey ? 'Key Connected' : 'Connect Key'}</span>
+          </button>
+        )}
 
         {/* Gemini AI Model Selector */}
         <div className="relative">
@@ -355,6 +374,20 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 <CreditCard className="w-3.5 h-3.5" />
                 <span>Plans & Infinity Credits</span>
               </button>
+
+              {/* Gemini API Key Menu Item */}
+              {onOpenApiKeyModal && (
+                <button
+                  onClick={() => {
+                    setIsProfileDropdownOpen(false);
+                    onOpenApiKeyModal();
+                  }}
+                  className="w-full px-3 py-2 text-left text-xs text-amber-400 hover:bg-amber-600/10 flex items-center space-x-2 font-medium"
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>{geminiApiKey ? 'Modify Gemini API Key' : 'Connect Gemini API Key (Free)'}</span>
+                </button>
+              )}
 
               {!user ? (
                 <button 

@@ -16,7 +16,9 @@ import {
   Users,
   CreditCard,
   Lock,
-  CheckCircle2
+  CheckCircle2,
+  Gift,
+  Copy
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCredits, PlanType, PLAN_CONFIGS } from '../../context/CreditsContext';
@@ -29,12 +31,27 @@ interface PricingModalProps {
 }
 
 export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
-  const { currentPlan, creditsRemaining, totalCredits, billingCycle, setBillingCycle, upgradePlan } = useCredits();
+  const { 
+    currentPlan, 
+    creditsRemaining, 
+    totalCredits, 
+    billingCycle, 
+    setBillingCycle, 
+    upgradePlan,
+    referralsClaimedCount,
+    referralBonusTotal,
+    maxReferralRewards,
+    creditsPerReferral,
+    getReferralLink,
+    claimReferralBonus
+  } = useCredits();
   const { user } = useAuth();
   const [selectedTab, setSelectedTab] = useState<'featured' | 'all'>('featured');
   const [upgradedSuccess, setUpgradedSuccess] = useState<{ plan: PlanType; paymentId?: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [referralFeedback, setReferralFeedback] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -331,6 +348,103 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
                 </div>
               );
             })}
+          </div>
+
+          {/* Referral Program Section (+300 Credits per invite, max 5 = 1,500 bonus) */}
+          <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-[#13192b] to-violet-950/60 border border-indigo-500/40 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-indigo-600/30 text-indigo-400 border border-indigo-500/30">
+                  <Gift className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-white flex items-center space-x-2">
+                    <span>Refer Friends & Earn Free Credits</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">
+                      +300 Credits / Friend 🎁
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Share your unique link. Earn <strong>300 bonus credits</strong> per referral (up to 5 rewarded friends = <strong>1,500 credits max</strong>).
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress counter */}
+              <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 shrink-0">
+                <span className="text-[10px] text-slate-400">Claimed:</span>
+                <span className="font-bold text-xs text-indigo-300 font-mono">
+                  {referralsClaimedCount} / {maxReferralRewards} ({referralBonusTotal} / 1,500 Credits)
+                </span>
+              </div>
+            </div>
+
+            {/* Referral Link Copy Bar */}
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={getReferralLink()}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#090d16] border border-slate-700/80 font-mono text-[11px] text-indigo-300 select-all outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(getReferralLink());
+                  setCopiedLink(true);
+                  try {
+                    confetti({
+                      particleCount: 50,
+                      spread: 60,
+                      origin: { y: 0.7 }
+                    });
+                  } catch {}
+                  setTimeout(() => setCopiedLink(false), 2500);
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center space-x-1.5 transition-all shrink-0 active:scale-95 shadow-md shadow-indigo-600/30"
+              >
+                {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedLink ? 'Copied Link!' : 'Copy Referral Link'}</span>
+              </button>
+            </div>
+
+            {/* Test Simulation Button / Status feedback */}
+            <div className="flex items-center justify-between text-[11px] pt-1">
+              <span className="text-slate-400">
+                {referralsClaimedCount >= maxReferralRewards ? (
+                  <span className="text-amber-300 font-semibold">
+                    ✓ Maximum 5 referral rewards reached (1,500 bonus credits claimed)! You can still share your link anytime.
+                  </span>
+                ) : (
+                  <span>
+                    You have <strong className="text-emerald-400">{maxReferralRewards - referralsClaimedCount}</strong> reward slots remaining.
+                  </span>
+                )}
+              </span>
+
+              {referralsClaimedCount < maxReferralRewards && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const claimed = claimReferralBonus();
+                    if (claimed) {
+                      setReferralFeedback('🎉 +300 Referral Credits Claimed!');
+                      try {
+                        confetti({
+                          particleCount: 90,
+                          spread: 70,
+                          origin: { y: 0.6 }
+                        });
+                      } catch {}
+                      setTimeout(() => setReferralFeedback(null), 3000);
+                    }
+                  }}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium cursor-pointer"
+                >
+                  {referralFeedback || 'Simulate Friend Invite (+300 Credits)'}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Infinity Credits Weighting Breakdown */}

@@ -132,6 +132,13 @@ interface CreditsContextType {
   blockedReason: string | null;
   verifyAccountBinding: (userEmail: string | null) => boolean;
   dismissBlockedAlert: () => void;
+  referralsClaimedCount: number;
+  referralBonusTotal: number;
+  maxReferralRewards: number;
+  creditsPerReferral: number;
+  referralCode: string;
+  getReferralLink: () => string;
+  claimReferralBonus: () => boolean;
 }
 
 const CreditsContext = createContext<CreditsContextType | undefined>(undefined);
@@ -151,11 +158,32 @@ export const CreditsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return PLAN_CONFIGS.free.creditsPerMonth;
   });
 
+  const [referralsClaimedCount, setReferralsClaimedCount] = useState<number>(() => {
+    const saved = localStorage.getItem('infinity_referrals_count');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [referralBonusTotal, setReferralBonusTotal] = useState<number>(() => {
+    const saved = localStorage.getItem('infinity_referral_bonus');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [referralCode] = useState<string>(() => {
+    let saved = localStorage.getItem('infinity_my_ref_code');
+    if (!saved) {
+      saved = 'INF_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      localStorage.setItem('infinity_my_ref_code', saved);
+    }
+    return saved;
+  });
+
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [isAccountSwitchBlocked, setIsAccountSwitchBlocked] = useState(false);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
-  const totalCredits = PLAN_CONFIGS[currentPlan].creditsPerMonth;
+  const maxReferralRewards = 5;
+  const creditsPerReferral = 300;
+  const totalCredits = PLAN_CONFIGS[currentPlan].creditsPerMonth + referralBonusTotal;
 
   useEffect(() => {
     localStorage.setItem('infinity_plan', currentPlan);
@@ -164,6 +192,41 @@ export const CreditsProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem('infinity_credits', creditsRemaining.toString());
   }, [creditsRemaining]);
+
+  useEffect(() => {
+    localStorage.setItem('infinity_referrals_count', referralsClaimedCount.toString());
+    localStorage.setItem('infinity_referral_bonus', referralBonusTotal.toString());
+  }, [referralsClaimedCount, referralBonusTotal]);
+
+  // Check if user arrived via a referral link ?ref=...
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const refParam = urlParams.get('ref');
+      if (refParam && !localStorage.getItem('infinity_referred_by')) {
+        localStorage.setItem('infinity_referred_by', refParam);
+        // Bonus for visiting via invite (+50 starter credits)
+        setCreditsRemaining(prev => prev + 50);
+      }
+    } catch {}
+  }, []);
+
+  const getReferralLink = (): string => {
+    const baseUrl = window.location.origin || 'https://sc-infinity-ai-phi.vercel.app';
+    return `${baseUrl}/?ref=${referralCode}`;
+  };
+
+  const claimReferralBonus = (): boolean => {
+    if (referralsClaimedCount >= maxReferralRewards) {
+      return false;
+    }
+    const nextCount = referralsClaimedCount + 1;
+    const addedBonus = creditsPerReferral;
+    setReferralsClaimedCount(nextCount);
+    setReferralBonusTotal(prev => prev + addedBonus);
+    setCreditsRemaining(prev => prev + addedBonus);
+    return true;
+  };
 
   // Anti-abuse: Verify if user switches Gmail accounts on this device to farm free credits
   const verifyAccountBinding = (userEmail: string | null): boolean => {
@@ -194,7 +257,7 @@ export const CreditsProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const upgradePlan = (plan: PlanType) => {
     setCurrentPlan(plan);
-    const newTotal = PLAN_CONFIGS[plan].creditsPerMonth;
+    const newTotal = PLAN_CONFIGS[plan].creditsPerMonth + referralBonusTotal;
     setCreditsRemaining(newTotal);
     setIsAccountSwitchBlocked(false);
     setBlockedReason(null);
@@ -250,7 +313,14 @@ export const CreditsProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isAccountSwitchBlocked,
         blockedReason,
         verifyAccountBinding,
-        dismissBlockedAlert
+        dismissBlockedAlert,
+        referralsClaimedCount,
+        referralBonusTotal,
+        maxReferralRewards,
+        creditsPerReferral,
+        referralCode,
+        getReferralLink,
+        claimReferralBonus
       }}
     >
       {children}

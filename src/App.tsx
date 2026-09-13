@@ -12,6 +12,7 @@ import { AgentProgressModal } from './components/views/AgentProgressModal';
 import { DeploymentModal } from './components/views/DeploymentModal';
 import { SettingsModal } from './components/views/SettingsModal';
 import { PricingModal } from './components/views/PricingModal';
+import { ApiKeyModal } from './components/views/ApiKeyModal';
 import { SecurityBlockModal } from './components/views/SecurityBlockModal';
 import { OnboardingModal } from './components/views/OnboardingModal';
 import { CommandPalette } from './components/views/CommandPalette';
@@ -27,6 +28,7 @@ import { useRuntime } from './context/RuntimeContext';
 import { useProject } from './context/ProjectContext';
 import { useCredits } from './context/CreditsContext';
 import { useAuth } from './context/AuthContext';
+import { useAI } from './context/AIContext';
 import { Terminal as TerminalIcon, GitBranch, AlertCircle, Radio } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -36,6 +38,7 @@ export const App: React.FC = () => {
   const [isDeployModalOpen, setIsDeployModalOpen] = useState<boolean>(false);
   const [isProjectCreationModalOpen, setIsProjectCreationModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
   const [isBottomPanelExpanded, setIsBottomPanelExpanded] = useState<boolean>(false);
   const [isBottomPanelVisible, setIsBottomPanelVisible] = useState<boolean>(true);
@@ -44,13 +47,23 @@ export const App: React.FC = () => {
   const { problems, activeTab } = useProject();
   const { isPricingModalOpen, setIsPricingModalOpen, verifyAccountBinding } = useCredits();
   const { user, loading } = useAuth();
+  const { geminiApiKey } = useAI();
 
-  // Validate account on login or state update
+  // Validate account on login or state update & prompt API key setup if not configured
   useEffect(() => {
     if (user?.email) {
       verifyAccountBinding(user.email);
+
+      // Check if user has not yet configured API key and was not prompted
+      const prompted = localStorage.getItem('infinity_gemini_api_key_prompted');
+      if (!prompted && !geminiApiKey) {
+        const timer = setTimeout(() => {
+          setIsApiKeyModalOpen(true);
+        }, 800);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [user]);
+  }, [user, geminiApiKey]);
 
   // Auth Gate: Only logged in users can access SC INFINITY IDE
   if (!user && !loading) {
@@ -111,6 +124,7 @@ export const App: React.FC = () => {
         onOpenDeployModal={() => setIsDeployModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         onOpenPricingModal={() => setIsPricingModalOpen(true)}
+        onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
         onToggleHomeView={() => setIsHomeView(!isHomeView)}
         isHomeViewActive={isHomeView}
         onEnsureBottomPanelVisible={() => setIsBottomPanelVisible(true)}
@@ -187,6 +201,11 @@ export const App: React.FC = () => {
       <PricingModal
         isOpen={isPricingModalOpen}
         onClose={() => setIsPricingModalOpen(false)}
+      />
+
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
       />
 
       {/* Multi-Account Abuse Security Modal */}
