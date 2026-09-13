@@ -17,7 +17,10 @@ import {
   GraduationCap,
   Heart,
   Star,
-  CheckCircle2
+  CheckCircle2,
+  Code2,
+  Cpu,
+  Layers
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -36,7 +39,7 @@ export const AuthView: React.FC = () => {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Animated falling & twinkling stars canvas effect
+  // High-performance particle & celestial shooting stars engine
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -54,42 +57,41 @@ export const AuthView: React.FC = () => {
     };
     window.addEventListener('resize', handleResize);
 
-    // Static twinkling stars
-    const starCount = 140;
-    const stars = Array.from({ length: starCount }, () => ({
+    // Cosmic star dust
+    const stars = Array.from({ length: 120 }, () => ({
       x: Math.random() * width,
-      y: Math.random() * height * 0.7,
-      radius: Math.random() * 1.5 + 0.5,
-      alpha: Math.random() * 0.8 + 0.2,
-      speed: Math.random() * 0.02 + 0.005,
-      increasing: Math.random() > 0.5
+      y: Math.random() * height,
+      size: Math.random() * 1.8 + 0.4,
+      alpha: Math.random() * 0.7 + 0.3,
+      speed: Math.random() * 0.015 + 0.005,
+      direction: Math.random() > 0.5 ? 1 : -1
     }));
 
-    // Shooting stars with glowing trails
-    interface ShootingStar {
+    // Shooting stars with luminous ionized tail trails
+    interface Meteor {
       x: number;
       y: number;
-      length: number;
+      len: number;
       speed: number;
+      alpha: number;
       angle: number;
-      opacity: number;
       life: number;
       maxLife: number;
     }
 
-    const shootingStars: ShootingStar[] = [];
+    const meteors: Meteor[] = [];
 
-    const spawnShootingStar = () => {
-      if (shootingStars.length < 4 && Math.random() < 0.035) {
-        shootingStars.push({
-          x: Math.random() * width * 0.8 + width * 0.1,
-          y: Math.random() * height * 0.35,
-          length: Math.random() * 120 + 80,
-          speed: Math.random() * 9 + 6,
-          angle: (Math.PI / 4) + (Math.random() * 0.2 - 0.1),
-          opacity: 1,
+    const spawnMeteor = () => {
+      if (meteors.length < 3 && Math.random() < 0.03) {
+        meteors.push({
+          x: Math.random() * width * 0.7 + width * 0.15,
+          y: Math.random() * height * 0.4,
+          len: Math.random() * 140 + 70,
+          speed: Math.random() * 8 + 6,
+          alpha: 1,
+          angle: Math.PI / 4 + (Math.random() * 0.15 - 0.075),
           life: 0,
-          maxLife: Math.random() * 40 + 35
+          maxLife: Math.random() * 35 + 30
         });
       }
     };
@@ -97,65 +99,58 @@ export const AuthView: React.FC = () => {
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Render twinkling stars
+      // 1. Draw twinkling starfield
       stars.forEach((star) => {
-        if (star.increasing) {
-          star.alpha += star.speed;
-          if (star.alpha >= 1) {
-            star.alpha = 1;
-            star.increasing = false;
-          }
-        } else {
-          star.alpha -= star.speed;
-          if (star.alpha <= 0.15) {
-            star.alpha = 0.15;
-            star.increasing = true;
-          }
-        }
+        star.alpha += star.speed * star.direction;
+        if (star.alpha >= 0.95) star.direction = -1;
+        if (star.alpha <= 0.2) star.direction = 1;
 
         ctx.beginPath();
-        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(220, 235, 255, ${star.alpha})`;
-        ctx.shadowColor = '#60a5fa';
-        ctx.shadowBlur = star.radius > 1.2 ? 6 : 2;
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(186, 230, 253, ${star.alpha})`;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = star.size > 1.2 ? 6 : 1;
         ctx.fill();
       });
 
-      // Spawn & render shooting stars
-      spawnShootingStar();
+      // 2. Spawn and render meteors
+      spawnMeteor();
 
-      for (let i = shootingStars.length - 1; i >= 0; i--) {
-        const s = shootingStars[i];
-        s.life++;
-        s.x += Math.cos(s.angle) * s.speed;
-        s.y += Math.sin(s.angle) * s.speed;
-        s.opacity = 1 - s.life / s.maxLife;
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i];
+        m.life++;
+        m.x += Math.cos(m.angle) * m.speed;
+        m.y += Math.sin(m.angle) * m.speed;
+        m.alpha = 1 - m.life / m.maxLife;
 
-        const tailX = s.x - Math.cos(s.angle) * s.length;
-        const tailY = s.y - Math.sin(s.angle) * s.length;
+        const tailX = m.x - Math.cos(m.angle) * m.len;
+        const tailY = m.y - Math.sin(m.angle) * m.len;
 
-        const gradient = ctx.createLinearGradient(s.x, s.y, tailX, tailY);
-        gradient.addColorStop(0, `rgba(255, 255, 255, ${s.opacity})`);
-        gradient.addColorStop(0.3, `rgba(168, 85, 247, ${s.opacity * 0.8})`);
-        gradient.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        const grad = ctx.createLinearGradient(m.x, m.y, tailX, tailY);
+        grad.addColorStop(0, `rgba(255, 255, 255, ${m.alpha})`);
+        grad.addColorStop(0.2, `rgba(168, 85, 247, ${m.alpha * 0.8})`);
+        grad.addColorStop(0.8, `rgba(56, 189, 248, ${m.alpha * 0.3})`);
+        grad.addColorStop(1, 'rgba(15, 23, 42, 0)');
 
         ctx.beginPath();
-        ctx.moveTo(s.x, s.y);
+        ctx.moveTo(m.x, m.y);
         ctx.lineTo(tailX, tailY);
-        ctx.strokeStyle = gradient;
-        ctx.lineWidth = 2;
-        ctx.shadowColor = '#c084fc';
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2.2;
+        ctx.shadowColor = '#a855f7';
         ctx.shadowBlur = 12;
         ctx.stroke();
 
-        // Bright star head
+        // Bright Meteor Core
         ctx.beginPath();
-        ctx.arc(s.x, s.y, 2, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${s.opacity})`;
+        ctx.arc(m.x, m.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${m.alpha})`;
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 10;
         ctx.fill();
 
-        if (s.life >= s.maxLife || s.x > width || s.y > height) {
-          shootingStars.splice(i, 1);
+        if (m.life >= m.maxLife || m.x > width || m.y > height) {
+          meteors.splice(i, 1);
         }
       }
 
@@ -203,7 +198,6 @@ export const AuthView: React.FC = () => {
     setErrorText(null);
     setIsLoading(true);
     try {
-      // Instant access with GitHub student developer identity
       await signInWithGuest('GitHub Developer', email || 'github.builder@sc-infinity.ai');
     } catch (err: any) {
       setErrorText(err.message || 'GitHub access error');
@@ -213,52 +207,45 @@ export const AuthView: React.FC = () => {
   };
 
   return (
-    <div className="relative w-screen min-h-screen bg-[#030611] text-slate-100 flex flex-col justify-between overflow-x-hidden overflow-y-auto select-none font-sans">
-      {/* Background Visual Art Layer */}
-      <div 
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0 pointer-events-none opacity-80 mix-blend-screen scale-100 transition-transform duration-1000"
-        style={{ backgroundImage: "url('/sc_infinity_hero_bg.jpg')" }}
-      />
+    <div className="relative w-screen min-h-screen bg-[#050713] text-slate-100 flex flex-col justify-between overflow-x-hidden overflow-y-auto select-none font-sans">
+      {/* 1. Deep Cosmic Nebula Glow Lights */}
+      <div className="fixed top-[-10%] left-[-10%] w-[65vw] h-[65vw] rounded-full bg-gradient-to-br from-indigo-600/15 via-purple-600/10 to-transparent blur-[140px] pointer-events-none z-0" />
+      <div className="fixed bottom-[-15%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-tl from-cyan-500/15 via-violet-600/10 to-transparent blur-[140px] pointer-events-none z-0" />
+      <div className="fixed top-[30%] left-[35%] w-[40vw] h-[40vw] rounded-full bg-indigo-500/10 blur-[160px] pointer-events-none z-0" />
 
-      {/* Atmospheric Vignette and Deep Cosmic Gradients */}
-      <div className="fixed inset-0 bg-gradient-to-b from-[#030611]/80 via-transparent to-[#030611]/90 pointer-events-none z-0" />
-      <div className="fixed inset-0 bg-radial-at-c from-transparent via-[#030611]/40 to-[#030611]/90 pointer-events-none z-0" />
+      {/* 2. Interactive Starfield Canvas (Shooting Stars + Twinkling Stars) */}
+      <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-10" />
 
-      {/* Falling Stars Canvas */}
-      <canvas 
-        ref={canvasRef} 
-        className="fixed inset-0 pointer-events-none z-10"
-      />
-
-      {/* 1. Top Navigation Bar */}
-      <header className="relative z-20 w-full px-6 sm:px-12 py-4 flex items-center justify-between backdrop-blur-xs">
-        {/* Left: Branding & Gemini Pill */}
+      {/* 3. Top Navigation Header */}
+      <header className="relative z-20 w-full px-6 sm:px-12 py-5 flex items-center justify-between border-b border-slate-800/40 backdrop-blur-md bg-[#050713]/40">
+        {/* Left: Brand + Gemini Pill */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3 group cursor-pointer">
-            {/* Neon Glowing Infinity Icon */}
+            {/* Glowing Infinity Logo */}
             <div className="relative flex items-center justify-center">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 via-purple-500 to-cyan-400 blur-sm opacity-80 animate-pulse" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-purple-300 drop-shadow-[0_0_12px_rgba(168,85,247,0.8)]">
-                  ∞
-                </span>
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-purple-600 p-[1.5px] shadow-lg shadow-cyan-500/20 group-hover:shadow-cyan-400/40 transition-all">
+                <div className="w-full h-full bg-[#070b19] rounded-2xl flex items-center justify-center">
+                  <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-300 to-purple-300">
+                    ∞
+                  </span>
+                </div>
               </div>
             </div>
 
             <div>
-              <div className="font-extrabold text-lg sm:text-xl tracking-tight text-white flex items-center space-x-1.5 leading-none">
+              <div className="font-extrabold text-lg sm:text-xl tracking-tight text-white flex items-center space-x-1.5 leading-tight">
                 <span>SC INFINITY</span>
-                <span className="text-cyan-400 font-light">IDE</span>
+                <span className="text-cyan-400 font-normal">IDE</span>
               </div>
-              <p className="text-[9px] text-cyan-300/80 font-mono tracking-widest uppercase mt-0.5 font-bold">
+              <p className="text-[9px] text-cyan-300/80 font-mono tracking-widest uppercase font-bold">
                 Autonomous AI Engineering Suite
               </p>
             </div>
           </div>
 
-          {/* Powered by Google Gemini Pill Badge */}
-          <div className="hidden md:flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#0c1224]/80 border border-indigo-500/30 text-[11px] text-slate-300 backdrop-blur-md shadow-lg shadow-indigo-950/40">
-            <span className="text-slate-400">Powered by</span>
+          {/* Powered by Google Gemini Pill */}
+          <div className="hidden md:flex items-center space-x-2 px-3 py-1 rounded-full bg-[#0d1428]/80 border border-indigo-500/30 text-[11px] text-slate-300 backdrop-blur-md shadow-md shadow-indigo-950/40">
+            <span className="text-slate-400 text-[10px]">Powered by</span>
             <div className="flex items-center space-x-1 font-semibold text-white">
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -271,7 +258,7 @@ export const AuthView: React.FC = () => {
           </div>
         </div>
 
-        {/* Center & Right: Navigation Links + Join Button */}
+        {/* Center & Right Navigation */}
         <div className="flex items-center space-x-6">
           <nav className="hidden lg:flex items-center space-x-6 text-xs font-medium text-slate-300">
             <span className="hover:text-cyan-300 cursor-pointer transition-colors">Build</span>
@@ -290,12 +277,12 @@ export const AuthView: React.FC = () => {
         </div>
       </header>
 
-      {/* 2. Main Hero + Login Card Body */}
-      <main className="relative z-20 flex-1 max-w-7xl mx-auto w-full px-6 sm:px-12 py-6 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-        {/* Left Column: Hero Text & Value Props (Cols 1-7) */}
+      {/* 4. Main Hero & Login Split Canvas */}
+      <main className="relative z-20 flex-1 max-w-7xl mx-auto w-full px-6 sm:px-12 py-8 lg:py-12 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+        {/* Left Column (Hero Content + Feature Matrix) */}
         <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
-          {/* Eyebrow Subheading */}
-          <div className="text-[11px] font-mono tracking-[0.25em] text-cyan-300/90 font-semibold uppercase flex items-center space-x-2">
+          {/* Eyebrow Breadcrumb */}
+          <div className="inline-flex items-center space-x-2 text-[11px] font-mono font-semibold tracking-[0.22em] text-cyan-300/90 uppercase bg-cyan-950/30 border border-cyan-500/20 px-3 py-1 rounded-full w-fit">
             <span>IDEAS</span>
             <span className="text-purple-400">→</span>
             <span>APPS</span>
@@ -303,26 +290,26 @@ export const AuthView: React.FC = () => {
             <span>IMPACT</span>
           </div>
 
-          {/* Main Hero Heading */}
+          {/* Hero Typography */}
           <div className="space-y-1">
-            <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-none">
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-none">
               Build
             </h1>
-            <h2 className="text-4xl sm:text-6xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 leading-tight drop-shadow-[0_0_25px_rgba(99,102,241,0.4)]">
+            <h2 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 leading-tight drop-shadow-[0_0_35px_rgba(99,102,241,0.4)]">
               Without Limits.
             </h2>
           </div>
 
           {/* Subtitle */}
-          <p className="text-sm text-slate-300 max-w-lg font-light leading-relaxed">
-            Describe. Plan. Build. Run. Test. Fix. Deploy. All with AI.
+          <p className="text-sm sm:text-base text-slate-300 max-w-xl font-light leading-relaxed">
+            Describe. Plan. Build. Run. Test. Fix. Deploy. All with autonomous AI.
           </p>
 
-          {/* 4 Feature Cards with Glowing Round Icons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 max-w-xl">
-            {/* Feature 1: AI Agent */}
-            <div className="flex items-start space-x-3 group">
-              <div className="p-2.5 rounded-full bg-indigo-950/70 border border-indigo-500/40 text-cyan-300 shadow-[0_0_15px_rgba(99,102,241,0.25)] group-hover:scale-110 transition-transform shrink-0">
+          {/* 4 Connected Feature Modules with Glowing Neon Icons */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 max-w-xl">
+            {/* Feature 1 */}
+            <div className="p-3.5 rounded-2xl bg-[#0c1122]/70 border border-slate-800/80 hover:border-cyan-500/40 hover:bg-[#0f162e]/80 transition-all flex items-start space-x-3 group shadow-sm">
+              <div className="p-2.5 rounded-xl bg-indigo-950/80 border border-indigo-500/40 text-cyan-300 shadow-[0_0_15px_rgba(99,102,241,0.25)] group-hover:scale-105 transition-transform shrink-0">
                 <Zap className="w-4 h-4" />
               </div>
               <div>
@@ -331,9 +318,9 @@ export const AuthView: React.FC = () => {
               </div>
             </div>
 
-            {/* Feature 2: Real Terminal */}
-            <div className="flex items-start space-x-3 group">
-              <div className="p-2.5 rounded-full bg-indigo-950/70 border border-indigo-500/40 text-cyan-300 shadow-[0_0_15px_rgba(99,102,241,0.25)] group-hover:scale-110 transition-transform shrink-0">
+            {/* Feature 2 */}
+            <div className="p-3.5 rounded-2xl bg-[#0c1122]/70 border border-slate-800/80 hover:border-cyan-500/40 hover:bg-[#0f162e]/80 transition-all flex items-start space-x-3 group shadow-sm">
+              <div className="p-2.5 rounded-xl bg-indigo-950/80 border border-indigo-500/40 text-cyan-300 shadow-[0_0_15px_rgba(99,102,241,0.25)] group-hover:scale-105 transition-transform shrink-0">
                 <Terminal className="w-4 h-4" />
               </div>
               <div>
@@ -342,9 +329,9 @@ export const AuthView: React.FC = () => {
               </div>
             </div>
 
-            {/* Feature 3: Autonomous Browser */}
-            <div className="flex items-start space-x-3 group">
-              <div className="p-2.5 rounded-full bg-indigo-950/70 border border-indigo-500/40 text-cyan-300 shadow-[0_0_15px_rgba(99,102,241,0.25)] group-hover:scale-110 transition-transform shrink-0">
+            {/* Feature 3 */}
+            <div className="p-3.5 rounded-2xl bg-[#0c1122]/70 border border-slate-800/80 hover:border-cyan-500/40 hover:bg-[#0f162e]/80 transition-all flex items-start space-x-3 group shadow-sm">
+              <div className="p-2.5 rounded-xl bg-indigo-950/80 border border-indigo-500/40 text-cyan-300 shadow-[0_0_15px_rgba(99,102,241,0.25)] group-hover:scale-105 transition-transform shrink-0">
                 <Globe className="w-4 h-4" />
               </div>
               <div>
@@ -353,9 +340,9 @@ export const AuthView: React.FC = () => {
               </div>
             </div>
 
-            {/* Feature 4: Local + Cloud Workspace */}
-            <div className="flex items-start space-x-3 group">
-              <div className="p-2.5 rounded-full bg-indigo-950/70 border border-indigo-500/40 text-cyan-300 shadow-[0_0_15px_rgba(99,102,241,0.25)] group-hover:scale-110 transition-transform shrink-0">
+            {/* Feature 4 */}
+            <div className="p-3.5 rounded-2xl bg-[#0c1122]/70 border border-slate-800/80 hover:border-cyan-500/40 hover:bg-[#0f162e]/80 transition-all flex items-start space-x-3 group shadow-sm">
+              <div className="p-2.5 rounded-xl bg-indigo-950/80 border border-indigo-500/40 text-cyan-300 shadow-[0_0_15px_rgba(99,102,241,0.25)] group-hover:scale-105 transition-transform shrink-0">
                 <Database className="w-4 h-4" />
               </div>
               <div>
@@ -365,21 +352,21 @@ export const AuthView: React.FC = () => {
             </div>
           </div>
 
-          {/* Testimonial Quote Glass Card */}
-          <div className="p-4 rounded-2xl bg-[#090e1f]/70 border border-slate-700/50 backdrop-blur-md max-w-md shadow-xl flex items-start space-x-3">
+          {/* Testimonial Quote Card */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#0c1226]/90 via-[#0a0f20]/90 to-[#0c1226]/90 border border-slate-800/80 backdrop-blur-xl max-w-lg shadow-xl flex items-start space-x-3">
             <span className="text-2xl text-cyan-400 font-serif leading-none shrink-0">“</span>
             <div className="space-y-1">
               <p className="text-xs text-slate-300 italic leading-snug">
                 Not just a code editor. A complete AI development universe.
               </p>
-              <p className="text-[10px] text-slate-400 font-semibold tracking-wider">
+              <p className="text-[10px] text-cyan-300 font-mono font-semibold tracking-wider">
                 — SC INFINITY
               </p>
             </div>
           </div>
 
-          {/* Bottom Stats Badges */}
-          <div className="flex flex-wrap items-center gap-6 pt-2 text-xs text-slate-300">
+          {/* Bottom Stats Pills */}
+          <div className="flex flex-wrap items-center gap-6 pt-1 text-xs text-slate-300">
             <div className="flex items-center space-x-2">
               <GraduationCap className="w-4 h-4 text-cyan-400" />
               <span className="font-bold text-white">10x</span>
@@ -400,14 +387,14 @@ export const AuthView: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Glassmorphic Login Card (Cols 8-12) */}
+        {/* Right Column (Glassmorphic Login Card) */}
         <div className="lg:col-span-5 flex justify-center lg:justify-end relative">
-          {/* Neon Glow Behind Card */}
-          <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-500/40 via-indigo-600/40 to-purple-600/40 rounded-[32px] blur-xl opacity-75 -z-10 animate-pulse" />
+          {/* Radial Neon Backlight Glow */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/30 via-indigo-600/30 to-purple-600/30 rounded-[34px] blur-2xl opacity-75 -z-10" />
 
-          {/* Glassmorphic Container */}
-          <div className="w-full max-w-md bg-[#0b1021]/85 border-2 border-cyan-400/40 rounded-3xl p-6 sm:p-8 backdrop-blur-2xl shadow-2xl shadow-cyan-950/50 relative overflow-hidden flex flex-col space-y-5">
-            {/* Top Bar: Card Header & Theme Pill Slider */}
+          {/* Glassmorphic Auth Card */}
+          <div className="w-full max-w-md bg-[#090e1f]/90 border-2 border-cyan-400/35 rounded-3xl p-6 sm:p-8 backdrop-blur-2xl shadow-2xl shadow-cyan-950/60 flex flex-col space-y-5">
+            {/* Header & Theme Switch */}
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-2xl font-black text-white tracking-tight">
@@ -418,10 +405,10 @@ export const AuthView: React.FC = () => {
                 </p>
               </div>
 
-              {/* Light/Dark Pill Toggle Slider */}
+              {/* Theme Slider */}
               <div 
                 onClick={toggleTheme}
-                className="flex items-center bg-[#070b16] border border-slate-700/80 rounded-full p-1 cursor-pointer transition-all hover:border-slate-500"
+                className="flex items-center bg-[#050814] border border-slate-700/80 rounded-full p-1 cursor-pointer transition-all hover:border-cyan-500/50"
                 title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
               >
                 <div className={`p-1 rounded-full transition-colors ${theme === 'light' ? 'bg-amber-400 text-slate-900' : 'text-slate-400'}`}>
@@ -441,13 +428,13 @@ export const AuthView: React.FC = () => {
               </div>
             )}
 
-            {/* Social Logins */}
+            {/* Social Logins (Google + GitHub) */}
             <div className="space-y-2.5">
               {/* Continue with Google */}
               <button
                 onClick={handleGoogleClick}
                 disabled={isLoading}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#11182c]/90 hover:bg-[#18213a] border border-slate-700/80 text-xs font-semibold text-white flex items-center justify-center space-x-2.5 transition-all shadow-sm hover:border-slate-500 active:scale-98 cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#0f162e]/90 hover:bg-[#162040] border border-slate-700/80 text-xs font-semibold text-white flex items-center justify-center space-x-2.5 transition-all shadow-sm hover:border-slate-500 active:scale-98 cursor-pointer"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -458,11 +445,11 @@ export const AuthView: React.FC = () => {
                 <span>Continue with Google</span>
               </button>
 
-              {/* Continue with GitHub (Replaces Apple login as requested) */}
+              {/* Continue with GitHub (Apple login removed as requested) */}
               <button
                 onClick={handleGitHubClick}
                 disabled={isLoading}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#11182c]/90 hover:bg-[#18213a] border border-slate-700/80 text-xs font-semibold text-white flex items-center justify-center space-x-2.5 transition-all shadow-sm hover:border-slate-500 active:scale-98 cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#0f162e]/90 hover:bg-[#162040] border border-slate-700/80 text-xs font-semibold text-white flex items-center justify-center space-x-2.5 transition-all shadow-sm hover:border-slate-500 active:scale-98 cursor-pointer"
               >
                 <Github className="w-4 h-4 shrink-0 text-white" />
                 <span>Continue with GitHub</span>
@@ -478,6 +465,20 @@ export const AuthView: React.FC = () => {
 
             {/* Email / Password Form */}
             <form onSubmit={handleSubmit} className="space-y-3.5">
+              {/* Optional Name (Sign Up Mode) */}
+              {mode === 'register' && (
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-slate-300">Full Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Sri Developer"
+                    className="w-full px-3.5 py-2.5 bg-[#050814] border border-slate-700/80 focus:border-cyan-400 rounded-xl text-xs text-white placeholder-slate-500 outline-none transition-all shadow-inner"
+                  />
+                </div>
+              )}
+
               {/* Email Address */}
               <div className="space-y-1">
                 <label className="block text-[11px] font-semibold text-slate-300">Email Address</label>
@@ -489,7 +490,7 @@ export const AuthView: React.FC = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     required
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#070c18] border border-slate-700/80 focus:border-cyan-400 rounded-xl text-xs text-white placeholder-slate-500 outline-none transition-all shadow-inner"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#050814] border border-slate-700/80 focus:border-cyan-400 rounded-xl text-xs text-white placeholder-slate-500 outline-none transition-all shadow-inner"
                   />
                 </div>
               </div>
@@ -501,7 +502,7 @@ export const AuthView: React.FC = () => {
                   <button 
                     type="button" 
                     onClick={() => setErrorText('Password reset instructions sent to your email.')}
-                    className="text-[10px] text-cyan-400 hover:underline"
+                    className="text-[10px] text-cyan-400 hover:underline cursor-pointer"
                   >
                     Forgot password?
                   </button>
@@ -513,7 +514,7 @@ export const AuthView: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full pl-10 pr-10 py-2.5 bg-[#070c18] border border-slate-700/80 focus:border-cyan-400 rounded-xl text-xs text-white placeholder-slate-500 outline-none transition-all shadow-inner"
+                    className="w-full pl-10 pr-10 py-2.5 bg-[#050814] border border-slate-700/80 focus:border-cyan-400 rounded-xl text-xs text-white placeholder-slate-500 outline-none transition-all shadow-inner"
                   />
                   <button
                     type="button"
@@ -525,7 +526,7 @@ export const AuthView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Main Submit Button */}
+              {/* Submit CTA */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -535,12 +536,12 @@ export const AuthView: React.FC = () => {
               </button>
             </form>
 
-            {/* Switch Mode Link */}
+            {/* Toggle Mode */}
             <div className="text-center pt-1">
               <button
                 type="button"
                 onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-                className="text-xs text-slate-400 hover:text-white transition-colors"
+                className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
               >
                 {mode === 'login' ? (
                   <span>Don't have an account? <strong className="text-cyan-400 hover:underline">Create one</strong></span>
@@ -553,7 +554,7 @@ export const AuthView: React.FC = () => {
         </div>
       </main>
 
-      {/* 3. Handwritten Neon Tag & Vertical Nav Accents */}
+      {/* 5. Handwritten Script & Vertical Nav Accents */}
       <div className="hidden xl:flex fixed right-8 top-1/3 flex-col items-center space-y-4 text-[10px] font-mono tracking-widest text-slate-400 select-none pointer-events-none opacity-80 z-20">
         <span className="rotate-90 origin-center translate-y-3">THINK</span>
         <span className="rotate-90 origin-center translate-y-6">BUILD</span>
@@ -573,8 +574,8 @@ export const AuthView: React.FC = () => {
         </svg>
       </div>
 
-      {/* 4. Footer Bar */}
-      <footer className="relative z-20 w-full px-6 sm:px-12 py-3 border-t border-slate-800/60 bg-[#030611]/80 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
+      {/* 6. Footer Bar */}
+      <footer className="relative z-20 w-full px-6 sm:px-12 py-4 border-t border-slate-800/60 bg-[#050713]/80 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
         <div>
           © 2026 SC INFINITY. All rights reserved.
         </div>
