@@ -14,6 +14,7 @@ import { GitHubService } from '../services/githubService';
 import { VercelService } from '../services/vercelService';
 import { useProject } from './ProjectContext';
 import { useCredits, CREDIT_COSTS } from './CreditsContext';
+import { useRuntime } from './RuntimeContext';
 import confetti from 'canvas-confetti';
 
 interface AIContextType {
@@ -61,6 +62,7 @@ export const AIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const { generateProjectWithAI, fileTree, currentProject } = useProject();
   const { consumeCredits } = useCredits();
+  const { refreshPreview } = useRuntime();
 
   const [messages, setMessages] = useState<AIMessage[]>([
     {
@@ -356,10 +358,11 @@ What would you like to build today?`,
 
     // 4. Handle Preview query
     if (lower.includes('preview') || lower.includes('பிரிவியூ') || lower.includes('live view') || lower.includes('open preview')) {
+      refreshPreview();
       const assistantMsg: AIMessage = {
         id: `msg_asst_${Date.now()}`,
         sender: 'assistant',
-        content: `🌐 **Live Web Preview Active**\n\nYour application is running on **\`http://localhost:5173\`**. You can interact with it live in the **Preview Panel** on the right!`,
+        content: `🌐 **Live Web Preview Active**\n\nYour application has been bundled and is running live on **\`http://localhost:5173\`**. You can interact with it live in the **Preview Panel** on the right!`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         type: 'text'
       };
